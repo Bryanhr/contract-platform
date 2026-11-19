@@ -1,19 +1,17 @@
 import { api } from '../../../core/api';
-import { toClients } from '../mappers/customer.mapper';
+import { Client } from '../../customers/models/client';
+import { getCustomers } from '../../customers/services/customer-api';
 import { toContracts } from '../mappers/contract.mapper';
-import { Client } from '../models/client';
 import { ContractSummary } from '../models/contract';
 import { ContractFilters, emptyContractFilters } from '../models/contract-filters';
 import { ContractRequest } from '../models/contract-request';
 import { ContractResponse } from '../models/contract-response';
-import { CustomerResponse } from '../models/customer-response';
 import { Plan } from '../models/plan';
 import { PlanDetail } from '../models/plan-detail';
 import { Template } from '../models/template';
 
 let templatesRequest: Promise<Template[]> | undefined;
 let plansRequest: Promise<Plan[]> | undefined;
-let customersRequest: Promise<Client[]> | undefined;
 const planDetailCache = new Map<number, Promise<PlanDetail>>();
 const contractsCache = new Map<string, Promise<ContractSummary[]>>();
 
@@ -48,15 +46,8 @@ export function getPlan(id: number) {
   return request;
 }
 
-export function getCustomers() {
-  customersRequest ??= api
-    .get<CustomerResponse[]>('/customers')
-    .then(toClients)
-    .catch((error: unknown) => {
-      customersRequest = undefined;
-      throw error;
-    });
-  return customersRequest;
+export function forgetContracts() {
+  contractsCache.clear();
 }
 
 export function getContracts(filters: ContractFilters = emptyContractFilters) {

@@ -1,0 +1,120 @@
+<app-shell current="clientes">
+  <a class="back" routerLink="/customers">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a clientes
+  </a>
+
+  <h1 id="contenido" tabindex="-1">{{ editing ? 'Editar cliente' : 'Nuevo cliente' }}</h1>
+
+  @if (failed()) {
+    @if (!unreachable()) {
+      <p class="lead">No se pudo cargar el cliente.</p>
+    }
+  } @else if (draft(); as client) {
+    <form aria-labelledby="contenido" novalidate (submit)="save($event)">
+      <div class="field">
+        <label for="empresa">Razón social</label>
+        <input
+          id="empresa"
+          name="empresa"
+          autocomplete="organization"
+          required
+          [value]="client.empresa"
+          [attr.aria-invalid]="error('empresa') ? 'true' : null"
+          [attr.aria-describedby]="error('empresa') ? 'empresa-error' : null"
+          (input)="set($event)"
+        />
+        @if (error('empresa')) {
+          <p id="empresa-error" class="error">{{ error('empresa') }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="ruc">RUC</label>
+        <input
+          id="ruc"
+          name="ruc"
+          inputmode="numeric"
+          maxlength="11"
+          autocomplete="off"
+          required
+          [value]="client.ruc"
+          [attr.aria-invalid]="error('ruc') ? 'true' : null"
+          [attr.aria-describedby]="error('ruc') ? 'ruc-error' : 'ruc-hint'"
+          (input)="set($event)"
+        />
+        @if (error('ruc')) {
+          <p id="ruc-error" class="error">{{ error('ruc') }}</p>
+        } @else {
+          <p id="ruc-hint" class="hint">11 dígitos.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="representante">Representante <span class="optional">(opcional)</span></label>
+        <input
+          id="representante"
+          name="representante"
+          autocomplete="name"
+          [value]="client.representante"
+          (input)="set($event)"
+        />
+      </div>
+
+      <div class="field">
+        <label for="correo">Correo <span class="optional">(opcional)</span></label>
+        <input
+          id="correo"
+          name="correo"
+          type="email"
+          autocomplete="email"
+          autocapitalize="none"
+          spellcheck="false"
+          [value]="client.correo"
+          [attr.aria-invalid]="error('correo') ? 'true' : null"
+          [attr.aria-describedby]="error('correo') ? 'correo-error' : null"
+          (input)="set($event)"
+        />
+        @if (error('correo')) {
+          <p id="correo-error" class="error">{{ error('correo') }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="telefono">Teléfono <span class="optional">(opcional)</span></label>
+        <input
+          id="telefono"
+          name="telefono"
+          type="tel"
+          autocomplete="tel"
+          [value]="client.telefono"
+          (input)="set($event)"
+        />
+      </div>
+
+      <div class="field">
+        <label for="domicilio">Domicilio <span class="optional">(opcional)</span></label>
+        <input
+          id="domicilio"
+          name="domicilio"
+          autocomplete="street-address"
+          enterkeyhint="done"
+          [value]="client.domicilio"
+          (input)="set($event)"
+        />
+      </div>
+
+      <p class="form-error" role="alert">{{ failure() }}</p>
+      <button class="submit" type="submit" [disabled]="saving()" [attr.aria-busy]="saving() ? 'true' : null">
+        @if (saving()) {
+          <progress class="loading-spinner" aria-label="Guardando cliente"></progress>
+          <span aria-hidden="true">Guardando…</span>
+        } @else {
+          {{ editing ? 'Guardar cambios' : 'Crear cliente' }}
+        }
+      </button>
+    </form>
+  } @else {
+    <progress class="loading-spinner page-loading" aria-label="Cargando cliente"></progress>
+  }
+</app-shell>
