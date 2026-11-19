@@ -23,6 +23,7 @@ import { contractPdf, getContracts, signedDocument, uploadSigned } from '../../s
   styleUrl: './contract-list.css',
 })
 export class ContractList {
+  private openFailedTimer: number | undefined;
   private readonly showLatest =
     inject(Router).getCurrentNavigation()?.extras.state?.['generated'] === true ||
     (typeof history !== 'undefined' && history.state?.['generated'] === true);
@@ -50,7 +51,11 @@ export class ContractList {
   );
 
   protected readonly visible = computed(() => {
-    const list = this.contracts() ?? [];
+    const list = [...(this.contracts() ?? [])].sort(
+      (left, right) =>
+        left.cliente.localeCompare(right.cliente, 'es', { sensitivity: 'base' }) ||
+        left.plan.localeCompare(right.plan, 'es', { sensitivity: 'base' }),
+    );
     const start = (this.page() - 1) * this.pageSize;
     return list.slice(start, start + this.pageSize);
   });
@@ -65,22 +70,26 @@ export class ContractList {
   }
 
   protected toggleFilters() {
+    this.clearOpenFailed();
     this.filtersOpen.update((open) => !open);
   }
 
   protected setStatus(event: Event) {
+    this.clearOpenFailed();
     const value = (event.target as HTMLSelectElement).value as ContractStatusFilter;
     this.filters.update((current) => ({ ...current, status: value }));
     void this.load();
   }
 
   protected setValidity(event: Event) {
+    this.clearOpenFailed();
     const value = (event.target as HTMLSelectElement).value as ContractValidityFilter;
     this.filters.update((current) => ({ ...current, validity: value }));
     void this.load();
   }
 
   protected clearFilters() {
+    this.clearOpenFailed();
     this.filters.set({ ...emptyContractFilters });
     void this.load();
   }
@@ -105,16 +114,16 @@ export class ContractList {
     if (!file) return;
     const pdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (!pdf) {
-      this.openFailed.set('Solo se aceptan archivos PDF.');
+      this.setOpenFailed('Solo se aceptan archivos PDF.');
       return;
     }
     this.uploading.set(id);
-    this.openFailed.set('');
+    this.clearOpenFailed();
     try {
       await uploadSigned(id, file);
       this.contracts.set(await getContracts(this.filters()));
     } catch (error) {
-      if (!isUnreachable(error)) this.openFailed.set('No se pudo subir el documento firmado.');
+      if (!isUnreachable(error)) this.setOpenFailed('No se pudo subir el documento firmado.');
     } finally {
       this.uploading.set('');
     }
@@ -123,7 +132,7 @@ export class ContractList {
   protected async download(id: string) {
     if (this.downloading()) return;
     this.downloading.set(id);
-    this.openFailed.set('');
+    this.clearOpenFailed();
     try {
       const file = await contractPdf(id);
       const url = URL.createObjectURL(file);
@@ -136,7 +145,7 @@ export class ContractList {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      if (!isUnreachable(error)) this.openFailed.set('No se pudo descargar el contrato.');
+      if (!isUnreachable(error)) this.setOpenFailed('No se pudo descargar el contrato.');
     } finally {
       this.downloading.set('');
     }
@@ -145,11 +154,11 @@ export class ContractList {
   protected async openSigned(id: string) {
     const tab = window.open('', '_blank');
     if (!tab) {
-      this.openFailed.set('El navegador bloqueó la ventana del documento.');
+      this.setOpenFailed('El navegador bloqueó la ventana del documento.');
       return;
     }
     this.opening.set(id);
-    this.openFailed.set('');
+    this.clearOpenFailed();
     try {
       const file = await signedDocument(id);
       const url = URL.createObjectURL(file);
@@ -157,10 +166,23 @@ export class ContractList {
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
       tab.close();
-      if (!isUnreachable(error)) this.openFailed.set('No se pudo abrir el documento firmado.');
+      if (!isUnreachable(error)) this.setOpenFailed('No se pudo abrir el documento firmado.');
     } finally {
       this.opening.set('');
     }
+
+  }
+
+  private setOpenFailed(message: string) {
+    this.clearOpenFailed();
+    this.openFailed.set(message);
+    this.openFailedTimer = window.setTimeout(() => this.clearOpenFailed(), 5000);
+  }
+
+  private clearOpenFailed() {
+    if (this.openFailedTimer !== undefined) window.clearTimeout(this.openFailedTimer);
+    this.openFailedTimer = undefined;
+    this.openFailed.set('');
   }
 
   private async load(showLatest = false) {

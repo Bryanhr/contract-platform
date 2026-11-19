@@ -61,7 +61,8 @@ export class Shell {
   protected readonly links: NavLink[] = [
     { key: 'inicio', label: 'Inicio', path: '/', icon: 'lucideHouse' },
     { key: 'clientes', label: 'Clientes', path: '/customers', icon: 'lucideBuilding2' },
-    { key: 'planes', label: 'Planes', path: '/', fragment: 'plans', icon: 'lucideLayers' },
+    { key: 'planes', label: 'Planes', path: '/plans', icon: 'lucideLayers' },
+    { key: 'servicios', label: 'Servicios', path: '/services', icon: 'lucideLayers' },
     { key: 'contratos', label: 'Contratos', path: '/contracts', icon: 'lucideFileText' },
   ];
 }

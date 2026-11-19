@@ -1,0 +1,203 @@
+<app-shell current="planes">
+  <a class="back" routerLink="/plans">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a planes
+  </a>
+
+  <h1 id="contenido" tabindex="-1">{{ editing ? 'Editar plan' : 'Nuevo plan' }}</h1>
+
+  @if (failed()) {
+    @if (!unreachable()) {
+      <p class="lead">{{ failed() }}</p>
+    }
+  } @else if (draft(); as plan) {
+    <form aria-labelledby="contenido" novalidate (submit)="save($event)">
+      <div class="field">
+        <label for="name">Nombre</label>
+        <input
+          id="name"
+          name="name"
+          autocomplete="off"
+          required
+          [value]="plan.name"
+          [attr.aria-invalid]="error('name') ? 'true' : null"
+          [attr.aria-describedby]="error('name') ? 'name-error' : null"
+          (input)="set($event)"
+        />
+        @if (error('name')) {
+          <p id="name-error" class="error">{{ error('name') }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="responseTimeHours">Tiempo de respuesta (horas)</label>
+        <input
+          id="responseTimeHours"
+          name="responseTimeHours"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          step="1"
+          required
+          [value]="plan.responseTimeHours"
+          [attr.aria-invalid]="error('responseTimeHours') ? 'true' : null"
+          [attr.aria-describedby]="error('responseTimeHours') ? 'responseTimeHours-error' : null"
+          (input)="set($event)"
+        />
+        @if (error('responseTimeHours')) {
+          <p id="responseTimeHours-error" class="error">{{ error('responseTimeHours') }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="monthlyCost">Costo mensual (S/)</label>
+        <input
+          id="monthlyCost"
+          name="monthlyCost"
+          type="number"
+          inputmode="decimal"
+          min="0.01"
+          step="0.01"
+          required
+          [value]="plan.monthlyCost"
+          [attr.aria-invalid]="error('monthlyCost') ? 'true' : null"
+          [attr.aria-describedby]="error('monthlyCost') ? 'monthlyCost-error' : 'monthlyCost-hint'"
+          (input)="set($event)"
+        />
+        @if (error('monthlyCost')) {
+          <p id="monthlyCost-error" class="error">{{ error('monthlyCost') }}</p>
+        } @else {
+          <p id="monthlyCost-hint" class="hint">Hasta 8 cifras enteras y dos decimales.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="durationMonths">Duración (meses)</label>
+        <input
+          id="durationMonths"
+          name="durationMonths"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          step="1"
+          required
+          [value]="plan.durationMonths"
+          [attr.aria-invalid]="error('durationMonths') ? 'true' : null"
+          [attr.aria-describedby]="error('durationMonths') ? 'durationMonths-error' : null"
+          (input)="set($event)"
+        />
+        @if (error('durationMonths')) {
+          <p id="durationMonths-error" class="error">{{ error('durationMonths') }}</p>
+        }
+      </div>
+
+      <p class="form-error" role="alert">{{ failure() }}</p>
+      <button class="submit" type="submit" [disabled]="saving()" [attr.aria-busy]="saving() ? 'true' : null">
+        @if (saving()) {
+          <progress class="loading-spinner" aria-label="Guardando plan"></progress>
+          <span aria-hidden="true">Guardando…</span>
+        } @else {
+          {{ editing ? 'Guardar cambios' : 'Crear plan' }}
+        }
+      </button>
+    </form>
+
+    @if (editing) {
+      <section class="plan-services" aria-labelledby="services-title">
+        <h2 id="services-title">Servicios del plan</h2>
+        @if (serviceNotice()) {
+          <p class="form-error" role="alert">{{ serviceNotice() }}</p>
+        }
+        @if (serviceFailure()) {
+          <p class="lead">{{ serviceFailure() }}</p>
+        } @else if (serviceLoading()) {
+          <progress class="loading-spinner page-loading" aria-label="Cargando servicios del plan"></progress>
+        } @else if (planServices(); as services) {
+          @if (services.length === 0) {
+            <p class="lead">Este plan todavía no tiene servicios asociados.</p>
+          } @else {
+            <ul class="service-list">
+              @for (service of services; track service.supportServiceId) {
+                <li class="service-entry">
+                  <div class="service-description">
+                    <h3>{{ service.name }}</h3>
+                    <p>{{ service.serviceType || 'Sin tipo' }}@if (service.unit) { · {{ service.unit }} }</p>
+                  </div>
+                  <form class="service-edit" (submit)="saveService($event, service, limit.value, cost.value)">
+                    <label>
+                      Límite mensual
+                      <input #limit type="number" min="0" step="1" required [value]="service.monthlyLimit" />
+                    </label>
+                    <label>
+                      Costo adicional
+                      <input #cost type="number" min="0" step="0.01" required [value]="service.extraCost" />
+                    </label>
+                    <button class="service-save" type="submit" [disabled]="savingService() !== null">
+                      {{ savingService() === service.supportServiceId ? 'Guardando…' : 'Guardar' }}
+                    </button>
+                    <button
+                      class="service-remove"
+                      type="button"
+                      [disabled]="removingService() !== null"
+                      (click)="removeService(service)"
+                    >
+                      {{ removingService() === service.supportServiceId ? 'Quitando…' : 'Quitar' }}
+                    </button>
+                  </form>
+                </li>
+              }
+            </ul>
+          }
+
+          <form class="service-add" (submit)="associateService($event)">
+            <h3>Asociar servicio</h3>
+            @if (availableServiceOptions().length === 0) {
+              <p class="hint">No hay servicios disponibles para asociar.</p>
+            } @else {
+              <label>
+                Servicio
+                <select
+                  required
+                  [value]="selectedService()"
+                  (change)="setServiceField('selectedService', $event)"
+                >
+                  <option value="">Selecciona un servicio</option>
+                  @for (option of availableServiceOptions(); track option.id) {
+                    <option [value]="option.id">{{ option.name }} · {{ option.serviceTypeName }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Límite mensual
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  required
+                  [value]="newMonthlyLimit()"
+                  (input)="setServiceField('newMonthlyLimit', $event)"
+                />
+              </label>
+              <label>
+                Costo adicional
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  [value]="newExtraCost()"
+                  (input)="setServiceField('newExtraCost', $event)"
+                />
+              </label>
+              <button class="service-save" type="submit" [disabled]="addingService()">
+                {{ addingService() ? 'Asociando…' : 'Asociar servicio' }}
+              </button>
+            }
+          </form>
+        }
+      </section>
+    }
+  } @else {
+    <progress class="loading-spinner page-loading" aria-label="Cargando plan"></progress>
+  }
+</app-shell>

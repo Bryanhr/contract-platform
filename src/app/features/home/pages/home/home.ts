@@ -25,7 +25,15 @@ export class Home {
       id: 'plans',
       icon: 'lucideLayers',
       name: 'Planes',
+      path: '/plans',
       summary: 'Servicios IT, alcance, vigencia y precio de cada oferta.',
+    },
+    {
+      id: 'services',
+      icon: 'lucideLayers',
+      name: 'Servicios',
+      path: '/services',
+      summary: 'Tipos de servicio y servicios disponibles para los planes.',
     },
     {
       id: 'contratos',

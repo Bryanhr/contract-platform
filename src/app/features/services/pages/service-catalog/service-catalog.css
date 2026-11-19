@@ -1,0 +1,155 @@
+:host {
+  display: block;
+}
+
+h1 {
+  margin: 0;
+  scroll-margin-top: 1rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+}
+
+.catalog-section {
+  max-width: 54rem;
+  margin-top: 2rem;
+}
+
+.catalog-section h2 {
+  margin: 0 0 0.75rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 1.7rem;
+}
+
+.lead,
+.hint,
+.notice {
+  margin: 0.75rem 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.feedback {
+  margin: 0.65rem 0 0;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.error-feedback {
+  color: var(--danger);
+}
+
+.row-feedback {
+  margin: 0.45rem 0 0;
+}
+
+.dismiss {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.catalog-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--control);
+}
+
+.catalog-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--control);
+}
+
+.catalog-row,
+.create-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.catalog-row label,
+.create-form label {
+  display: flex;
+  flex: 1 1 10rem;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.catalog-row input,
+.catalog-row select,
+.create-form input,
+.create-form select {
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--control);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+}
+
+.create-form {
+  margin-top: 1rem;
+}
+
+.create-form > label {
+  flex-basis: 100%;
+}
+
+.service-create input,
+.service-create select {
+  flex: 1 1 10rem;
+}
+
+.optional {
+  font-weight: 400;
+}
+
+.save,
+.remove {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid transparent;
+  background: var(--rail);
+  color: var(--rail-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.remove {
+  border-color: var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+
+.save:disabled,
+.remove:disabled {
+  cursor: default;
+}
+
+progress.page-loading:indeterminate {
+  --size: 3rem;
+  margin: 3rem auto;
+}
+
+@media (forced-colors: active) {
+  .catalog-row input,
+  .catalog-row select,
+  .create-form input,
+  .create-form select,
+  .save,
+  .remove {
+    border: 1px solid ButtonText;
+  }
+}
