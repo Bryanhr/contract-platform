@@ -18,6 +18,7 @@ export class Home {
       id: 'clients',
       icon: 'lucideBuilding2',
       name: 'Clientes',
+      path: '/customers',
       summary: 'Empresas atendidas, contactos y el estado de cada cuenta.',
     },
     {
