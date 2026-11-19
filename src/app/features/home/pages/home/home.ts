@@ -18,13 +18,22 @@ export class Home {
       id: 'clients',
       icon: 'lucideBuilding2',
       name: 'Clientes',
+      path: '/customers',
       summary: 'Empresas atendidas, contactos y el estado de cada cuenta.',
     },
     {
       id: 'plans',
       icon: 'lucideLayers',
       name: 'Planes',
+      path: '/plans',
       summary: 'Servicios IT, alcance, vigencia y precio de cada oferta.',
+    },
+    {
+      id: 'services',
+      icon: 'lucideLayers',
+      name: 'Servicios',
+      path: '/services',
+      summary: 'Tipos de servicio y servicios disponibles para los planes.',
     },
     {
       id: 'contratos',

@@ -1,0 +1,142 @@
+<app-shell current="servicios">
+  <a class="back" routerLink="/">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a inicio
+  </a>
+
+  <h1 id="contenido" tabindex="-1">Catálogo de servicios</h1>
+
+  @if (failed()) {
+    @if (!unreachable()) {
+      <p class="lead">{{ failed() }}</p>
+    }
+  } @else if (types(); as serviceTypes) {
+    <section class="catalog-section" aria-labelledby="types-heading">
+      <h2 id="types-heading">Tipos de servicio</h2>
+      @if (deleteServiceTypeFeedback(); as feedback) {
+        <p class="feedback" [class.error-feedback]="feedback.type === 'error'" role="status">
+          {{ feedback.text }} <button type="button" class="dismiss" (click)="closeDeleteTypeFeedback()">×</button>
+        </p>
+      }
+      @if (serviceTypes.length === 0) {
+        <p class="lead">Todavía no hay tipos de servicio.</p>
+      } @else {
+        <ul class="catalog-list">
+          @for (type of serviceTypes; track type.id) {
+            <li>
+              <form class="catalog-row" (submit)="saveType($event, type, typeName.value)">
+                <input #typeName [value]="type.name" aria-label="Nombre del tipo de servicio" required (input)="clearTypeRowFeedback(type.id)" />
+                <button class="save" type="submit" [disabled]="saving() !== ''">
+                  {{ saving() === 'type-' + type.id ? 'Guardando…' : 'Guardar' }}
+                </button>
+                <button
+                  class="remove"
+                  type="button"
+                  [disabled]="saving() !== ''"
+                  (click)="removeType(type)"
+                >
+                  {{ saving() === 'delete-type-' + type.id ? 'Eliminando…' : 'Eliminar' }}
+                </button>
+              </form>
+              @if (typeRowMessage(type.id); as feedback) {
+                <p class="feedback row-feedback" [class.error-feedback]="feedback.type === 'error'" role="status">{{ feedback.text }}</p>
+              }
+            </li>
+          }
+        </ul>
+      }
+      <form class="create-form" (submit)="createType($event, newTypeName.value)">
+        <label for="new-type">Nuevo tipo</label>
+        <input #newTypeName id="new-type" required autocomplete="off" (input)="clearCreateServiceTypeFeedback()" />
+        <button class="save" type="submit" [disabled]="saving() !== ''">
+          {{ saving() === 'type' ? 'Creando…' : 'Agregar tipo' }}
+        </button>
+      </form>
+      @if (createServiceTypeFeedback(); as feedback) {
+        <p class="feedback" [class.error-feedback]="feedback.type === 'error'" role="status">{{ feedback.text }}</p>
+      }
+    </section>
+
+    <section class="catalog-section" aria-labelledby="services-heading">
+      <h2 id="services-heading">Servicios</h2>
+      @if (deleteServiceFeedback(); as feedback) {
+        <p class="feedback" [class.error-feedback]="feedback.type === 'error'" role="status">
+          {{ feedback.text }} <button type="button" class="dismiss" (click)="closeDeleteServiceFeedback()">×</button>
+        </p>
+      }
+      @if (services(); as catalogServices) {
+        @if (catalogServices.length === 0) {
+          <p class="lead">Todavía no hay servicios registrados.</p>
+        } @else {
+          <ul class="catalog-list">
+            @for (service of catalogServices; track service.id) {
+              <li>
+                <form
+                  class="catalog-row service-row"
+                  (submit)="saveService($event, service, serviceName.value, serviceType.value, serviceUnit.value)"
+                >
+                  <label>
+                    Nombre
+                    <input #serviceName [value]="service.name" required (input)="clearServiceRowFeedback(service.id)" />
+                  </label>
+                  <label>
+                    Tipo
+                    <select #serviceType [value]="service.serviceTypeId" required (change)="clearServiceRowFeedback(service.id)">
+                      @for (type of serviceTypes; track type.id) {
+                        <option [value]="type.id">{{ type.name }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    Unidad <span class="optional">(opcional)</span>
+                    <input #serviceUnit [value]="service.unit ?? ''" (input)="clearServiceRowFeedback(service.id)" />
+                  </label>
+                  <button class="save" type="submit" [disabled]="saving() !== ''">
+                    {{ saving() === 'service-' + service.id ? 'Guardando…' : 'Guardar' }}
+                  </button>
+                  <button
+                    class="remove"
+                    type="button"
+                    [disabled]="saving() !== ''"
+                    (click)="removeService(service)"
+                  >
+                    {{ saving() === 'delete-service-' + service.id ? 'Eliminando…' : 'Eliminar' }}
+                  </button>
+                </form>
+                @if (serviceRowMessage(service.id); as feedback) {
+                  <p class="feedback row-feedback" [class.error-feedback]="feedback.type === 'error'" role="status">{{ feedback.text }}</p>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+      @if (serviceTypes.length === 0) {
+        <p class="hint">Agrega primero un tipo de servicio para registrar servicios.</p>
+      } @else {
+        <form
+          class="create-form service-create"
+          (submit)="createService($event, newServiceName.value, newServiceType.value, newServiceUnit.value)"
+        >
+          <label for="new-service">Nuevo servicio</label>
+          <input #newServiceName id="new-service" required autocomplete="off" placeholder="Nombre" (input)="clearCreateServiceFeedback()" />
+          <select #newServiceType aria-label="Tipo del nuevo servicio" required (change)="clearCreateServiceFeedback()">
+            <option value="">Selecciona un tipo</option>
+            @for (type of serviceTypes; track type.id) {
+              <option [value]="type.id">{{ type.name }}</option>
+            }
+          </select>
+          <input #newServiceUnit aria-label="Unidad opcional" placeholder="Unidad (opcional)" (input)="clearCreateServiceFeedback()" />
+          <button class="save" type="submit" [disabled]="saving() !== ''">
+            {{ saving() === 'service' ? 'Creando…' : 'Agregar servicio' }}
+          </button>
+        </form>
+        @if (createServiceFeedback(); as feedback) {
+          <p class="feedback" [class.error-feedback]="feedback.type === 'error'" role="status">{{ feedback.text }}</p>
+        }
+      }
+    </section>
+  } @else {
+    <progress class="loading-spinner page-loading" aria-label="Cargando catálogo de servicios"></progress>
+  }
+</app-shell>

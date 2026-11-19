@@ -1,0 +1,109 @@
+<app-shell current="clientes">
+  <a class="back" routerLink="/">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a inicio
+  </a>
+
+  <div class="head">
+    <h1 id="contenido" tabindex="-1">Clientes</h1>
+    <a class="make" routerLink="/customers/new">Nuevo cliente</a>
+  </div>
+
+  @if (failed()) {
+    @if (!unreachable()) {
+      <p class="lead">No se pudieron cargar los clientes.</p>
+    }
+  } @else if (customers(); as customers) {
+    @if (customers.length === 0) {
+      <p class="lead">Todavía no hay clientes.</p>
+    } @else {
+      <div class="search">
+        <label for="buscar">Buscar por razón social o RUC</label>
+        <div class="search-box">
+          <ng-icon name="lucideSearch" aria-hidden="true" />
+          <input
+            id="buscar"
+            #searchInput
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            enterkeyhint="search"
+            [value]="query()"
+            (input)="search($event)"
+          />
+        </div>
+      </div>
+
+      @if (notice()) {
+        <p class="notice" role="alert">{{ notice() }}</p>
+      }
+
+      @if (matches().length === 0) {
+        <p class="lead">Ningún cliente coincide con «{{ query() }}».</p>
+      } @else {
+        <ul class="register">
+          @for (client of visible(); track client.id) {
+            <li>
+              <article class="entry">
+                <div class="who">
+                  <h2>{{ client.empresa }}</h2>
+                  <p>RUC {{ client.ruc }}</p>
+                  @if (client.representante) {
+                    <p>{{ client.representante }}</p>
+                  }
+                  @if (client.correo || client.telefono) {
+                    <p>{{ client.correo }}@if (client.correo && client.telefono) { · }{{ client.telefono }}</p>
+                  }
+                </div>
+                <footer class="entry-actions">
+                  <a class="revise" [routerLink]="['/customers', client.id, 'edit']">
+                    Editar<span class="visually-hidden"> {{ client.empresa }}</span>
+                  </a>
+                  <button type="button" class="remove" (click)="askRemove(client)">
+                    Eliminar<span class="visually-hidden"> {{ client.empresa }}</span>
+                  </button>
+                </footer>
+              </article>
+            </li>
+          }
+        </ul>
+
+        @if (pageCount() > 1) {
+          <div class="pager">
+            <p class="page-where" aria-live="polite" aria-atomic="true">Página {{ page() }} de {{ pageCount() }}</p>
+            <nav class="pages" aria-label="Páginas">
+              <button type="button" (click)="go(page() - 1)" [disabled]="page() === 1">Anterior</button>
+              <ol>
+                @for (number of pages(); track number) {
+                  <li>
+                    <button
+                      type="button"
+                      [attr.aria-current]="number === page() ? 'page' : null"
+                      (click)="go(number)"
+                    >
+                      <span class="visually-hidden">Página </span>{{ number }}
+                    </button>
+                  </li>
+                }
+              </ol>
+              <button type="button" (click)="go(page() + 1)" [disabled]="page() === pageCount()">Siguiente</button>
+            </nav>
+          </div>
+        }
+      }
+    }
+  } @else {
+    <progress class="loading-spinner" aria-label="Cargando clientes"></progress>
+  }
+
+  <dialog #removeDialog class="confirm" closedby="any" aria-labelledby="remove-title">
+    <h2 id="remove-title">Eliminar cliente</h2>
+    <p>Se eliminará {{ removing()?.empresa }}. Esta acción no se puede deshacer.</p>
+    <form method="dialog">
+      <button value="cancel" autofocus [disabled]="deleting()">Cancelar</button>
+      <button type="button" class="confirm-danger" (click)="confirmRemove()" [disabled]="deleting()">
+        {{ deleting() ? 'Eliminando…' : 'Eliminar' }}
+      </button>
+    </form>
+  </dialog>
+</app-shell>

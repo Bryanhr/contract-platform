@@ -18,15 +18,15 @@ import { addMonths, formatCalendarDate, todayIso } from '../../format/calendar';
 import { serviceLine } from '../../format/service-line';
 import { soles } from '../../format/soles';
 import { contractIcons } from '../../icons';
-import { Client } from '../../models/client';
+import { Client } from '../../../customers/models/client';
 import { Draft } from '../../models/draft';
 import { Piece } from '../../models/document';
 import { PlanDetail } from '../../models/plan-detail';
 import { Template } from '../../models/template';
+import { getCustomers } from '../../../customers/services/customer-api';
 import {
   createContract,
   getContract,
-  getCustomers,
   getPlan,
   getTemplates,
   updateContract,
