@@ -1,0 +1,116 @@
+:host {
+  display: block;
+}
+
+.module-icon {
+  --ng-icon__size: 1.35rem;
+  flex: none;
+  color: inherit;
+}
+
+h1 {
+  margin: 0;
+  max-width: 16ch;
+  scroll-margin-top: 1rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+h1:focus-visible {
+  outline-offset: 4px;
+}
+
+.lead {
+  margin: 0.85rem 0 0;
+  max-width: 38rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.modules {
+  margin: 2.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--control);
+  background: var(--panel);
+}
+
+.modules li + li {
+  border-top: 1px solid var(--control);
+}
+
+.module {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  min-height: 4.5rem;
+  padding: 1rem 1.15rem;
+  color: inherit;
+  text-decoration: none;
+  scroll-margin-top: 1rem;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.module:hover .module-name {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.15em;
+}
+
+.module-copy {
+  min-width: 0;
+}
+
+.module-name,
+.module-summary {
+  display: block;
+  overflow-wrap: break-word;
+}
+
+.module-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.module-summary {
+  margin-top: 0.2rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .modules {
+    animation: arrive 0.4s ease-out both;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  h1 {
+    font-size: 2.2rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .modules {
+    border: 1px solid ButtonText;
+  }
+}

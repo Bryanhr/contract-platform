@@ -1,0 +1,39 @@
+<app-shell current="contratos">
+  <a class="back" routerLink="/contracts">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a contratos
+  </a>
+  <h1 id="contenido" tabindex="-1">Elegir plantilla</h1>
+  <p class="lead">La plantilla trae el plan y el texto que sale en el contrato.</p>
+
+  @if (failed()) {
+    @if (!unreachable()) {
+      <p class="lead">No se pudieron cargar las plantillas.</p>
+    }
+  } @else if (templates(); as templates) {
+    <ul class="shelf">
+      @for (template of templates; track template.id) {
+        <li>
+          <a [routerLink]="['/contracts/new', template.id]">
+            <article class="sheet">
+              <ng-icon name="lucideFileText" class="mark" aria-hidden="true" />
+              <h2>{{ template.planName }}</h2>
+              <p>{{ template.name }}</p>
+            </article>
+          </a>
+        </li>
+      }
+    </ul>
+  } @else {
+    <div class="shelf" aria-busy="true">
+      @for (row of skeleton; track row) {
+        <article class="sheet" aria-hidden="true">
+          <span class="skeleton mark"></span>
+          <span class="skeleton title"></span>
+          <span class="skeleton line"></span>
+        </article>
+      }
+      <p class="visually-hidden">Cargando plantillas.</p>
+    </div>
+  }
+</app-shell>

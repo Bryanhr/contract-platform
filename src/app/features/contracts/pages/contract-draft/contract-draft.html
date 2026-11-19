@@ -1,0 +1,216 @@
+<app-shell current="contratos">
+  <a class="back" [routerLink]="editing() ? '/contracts' : '/contracts/new'">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    {{ editing() ? 'Volver a contratos' : 'Volver a plantillas' }}
+  </a>
+  @if (failed()) {
+    <h1 id="contenido" tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
+    @if (!unreachable()) {
+      <p class="using">{{ editing() ? 'No se pudo cargar el contrato.' : 'No se pudo cargar la plantilla.' }}</p>
+    }
+  } @else if (template(); as template) {
+  <h1 id="contenido" tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
+  <p class="using">
+    <span>{{ template.name }}</span>
+    @if (!editing()) {
+      <a routerLink="/contracts/new">Cambiar plantilla</a>
+    }
+  </p>
+
+  <div class="desk">
+    <form aria-labelledby="contenido" novalidate (submit)="generate($event)">
+      <div class="folds">
+      <details class="fold" id="cliente-fold" open>
+        <summary>
+          Cliente
+          @if (client(); as cliente) {
+            <span class="fold-value">{{ cliente.empresa }}</span>
+          }
+        </summary>
+        <div class="fold-body">
+          <div class="field">
+            <label class="visually-hidden" for="cliente">Cliente</label>
+            @if (clients(); as list) {
+              <select
+                id="cliente"
+                name="cliente"
+                class="choice"
+                [class.choice-blank]="!draft().cliente"
+                [value]="draft().cliente"
+                [attr.aria-invalid]="missing() === 'cliente' && failure() ? 'true' : null"
+                [attr.aria-describedby]="describedBy('cliente')"
+                (change)="set($event)"
+                (pointerleave)="leave($event)"
+              >
+                <button type="button">
+                  {{ client()?.empresa || 'Seleccionar cliente' }}
+                </button>
+                <option value="" [selected]="!draft().cliente">Seleccionar cliente</option>
+                @for (cliente of list; track cliente.id) {
+                  <option [value]="cliente.id" [selected]="draft().cliente === cliente.id">
+                    {{ cliente.empresa }}
+                  </option>
+                }
+              </select>
+            } @else {
+              <select id="cliente" name="cliente" class="choice choice-blank" disabled value="">
+                <button type="button">Seleccionar cliente</button>
+                <option value="" selected>Seleccionar cliente</option>
+              </select>
+            }
+          </div>
+          @if (clientsFailed()) {
+            <p>No se pudieron cargar los clientes.</p>
+          }
+          @if (client(); as cliente) {
+            <dl id="cliente-datos" class="record">
+              <div>
+                <dt>RUC</dt>
+                <dd>{{ cliente.ruc }}</dd>
+              </div>
+              <div>
+                <dt>Representante</dt>
+                <dd>{{ cliente.representante }}</dd>
+              </div>
+              <div>
+                <dt>Domicilio</dt>
+                <dd>{{ cliente.domicilio }}</dd>
+              </div>
+              <div>
+                <dt>Correo</dt>
+                <dd>{{ cliente.correo }}</dd>
+              </div>
+              <div>
+                <dt>Teléfono</dt>
+                <dd>{{ cliente.telefono }}</dd>
+              </div>
+            </dl>
+          }
+        </div>
+      </details>
+
+      <details class="fold">
+        <summary>
+          Plan
+          <span class="fold-value">{{ template.planName }}</span>
+        </summary>
+        <div class="fold-body">
+          @if (plan(); as plan) {
+            <div id="plan-terminos" class="terms">
+              <p>{{ plan.durationMonths }} meses, {{ monthly() }} al mes, respuesta en {{ plan.responseTimeHours }} horas.</p>
+              @if (plan.services?.length) {
+                <ul>
+                  @for (line of serviceLines(); track line) {
+                    <li>{{ line }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        </div>
+      </details>
+
+      <details class="fold" id="inicio-fold" [open]="editing()">
+        <summary>Inicio del servicio</summary>
+        <div class="fold-body">
+        <div class="field">
+          <label class="visually-hidden" for="inicio">Inicio del servicio</label>
+          <input
+            id="inicio"
+            name="inicio"
+            type="date"
+            autocomplete="off"
+            enterkeyhint="done"
+            [min]="startMin()"
+            [value]="draft().inicio"
+            [attr.aria-invalid]="missing() === 'inicio' && failure() ? 'true' : null"
+            [attr.aria-describedby]="describedBy('inicio')"
+            (input)="set($event)"
+            (change)="set($event)"
+          />
+          <p id="fin-aviso" class="hint" [hidden]="!endDate()">Termina el {{ endDate() }}.</p>
+        </div>
+        </div>
+      </details>
+      </div>
+      <p id="generar-error" class="form-error" [class.shown]="!!failure()">{{ failure() }}</p>
+      <button class="generate" type="submit" [disabled]="generating()" [attr.aria-busy]="generating() ? 'true' : null">
+        @if (generating()) {
+          <progress
+            class="loading-spinner"
+            [attr.aria-label]="editing() ? 'Guardando contrato' : 'Generando contrato'"
+          ></progress>
+          <span aria-hidden="true">{{ editing() ? 'Guardando…' : 'Generando…' }}</span>
+        } @else {
+          {{ editing() ? 'Guardar cambios' : 'Generar contrato' }}
+        }
+      </button>
+    </form>
+
+    <div class="preview" tabindex="0" role="region" aria-label="Vista previa del contrato">
+      <article class="page" lang="es">
+        <header class="letterhead">
+          <div>
+            <p class="firm" translate="no">SERVIT</p>
+            <p class="firm-note">Servicios de soporte</p>
+          </div>
+          <p class="doc-date">{{ signDate() }}</p>
+        </header>
+
+        @for (block of document(); track $index) {
+          @switch (block.kind) {
+            @case ('title') {
+              <h2>@for (piece of block.pieces; track $index) {@if (piece.kind === 'text') {{{piece.value}}}@else if (slotPending(piece.name)) {<span class="blank"><span class="visually-hidden">sin completar</span></span>}@else if (slotValue(piece.name)) {<span class="written">{{ slotValue(piece.name) }}</span>}}</h2>
+            }
+            @case ('heading') {
+              <h3>@for (piece of block.pieces; track $index) {@if (piece.kind === 'text') {{{piece.value}}}@else if (slotPending(piece.name)) {<span class="blank"><span class="visually-hidden">sin completar</span></span>}@else if (slotValue(piece.name)) {<span class="written">{{ slotValue(piece.name) }}</span>}}</h3>
+            }
+            @case ('paragraph') {
+              @if (isServicesBlock(block.pieces)) {
+                @if (plan()) {
+                  <p class="prose"><span class="written">{{ servicesIntro() }}</span></p>
+                  @if (serviceLines().length) {
+                    <ul class="services">
+                      @for (line of serviceLines(); track line) {
+                        <li>{{ line }}</li>
+                      }
+                    </ul>
+                  }
+                }
+              } @else {
+                <p class="prose">@for (piece of block.pieces; track $index) {@if (piece.kind === 'text') {{{piece.value}}}@else if (slotPending(piece.name)) {<span class="blank"><span class="visually-hidden">sin completar</span></span>}@else if (slotValue(piece.name)) {<span class="written">{{ slotValue(piece.name) }}</span>}}</p>
+              }
+            }
+          }
+        }
+
+        <div class="signs">
+          <div>
+            <p class="sign-who">Por el cliente:</p>
+            <span class="sign-line"></span>
+            <p class="sign-name">{{ client()?.representante }}</p>
+            <p class="sign-role">{{ client()?.empresa }}</p>
+          </div>
+          <div>
+            <p class="sign-who">Por <span translate="no">SERVIT</span>:</p>
+            <span class="sign-line">
+              <img src="firma-servit.png" alt="Firma de SERVIT" width="409" height="163" />
+            </span>
+            <p class="sign-name" translate="no">SERVIT</p>
+            <p class="sign-role">Servicios de soporte</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+  }
+  @else {
+    <div class="loading">
+      <h1 id="contenido" tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
+      <progress
+        class="loading-spinner"
+        [attr.aria-label]="editing() ? 'Cargando contrato' : 'Cargando plantilla'"
+      ></progress>
+    </div>
+  }
+</app-shell>

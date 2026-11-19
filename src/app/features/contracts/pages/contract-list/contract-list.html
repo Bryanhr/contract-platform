@@ -1,0 +1,200 @@
+<app-shell current="contratos">
+  <a class="back" routerLink="/">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a inicio
+  </a>
+
+  <div class="head">
+    <h1 id="contenido" tabindex="-1">Contratos</h1>
+    <div class="actions">
+      <button
+        type="button"
+        class="filter"
+        [class.open]="filtersOpen()"
+        [attr.aria-expanded]="filtersOpen()"
+        aria-controls="contract-filters"
+        (click)="toggleFilters()"
+      >
+        <ng-icon name="lucideListFilter" aria-hidden="true" />
+        Filtrar
+      </button>
+      <a class="make" routerLink="/contracts/new">Generar contrato</a>
+    </div>
+  </div>
+
+  @if (filtersOpen()) {
+    <div id="contract-filters" class="filters">
+      <div class="filter-field">
+        <label for="filtro-firma">Estado de firma</label>
+        <select
+          id="filtro-firma"
+          class="choice"
+          data-blank="Todos"
+          [value]="filters().status"
+          (change)="setStatus($event)"
+        >
+          <button type="button">
+            <selectedcontent></selectedcontent>
+          </button>
+          <option value="">Todos</option>
+          <option value="GENERATED">Generado</option>
+          <option value="SIGNED">Firmado</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="filtro-vigencia">Vigencia</label>
+        <select
+          id="filtro-vigencia"
+          class="choice"
+          data-blank="Todas"
+          [value]="filters().validity"
+          (change)="setValidity($event)"
+        >
+          <button type="button">
+            <selectedcontent></selectedcontent>
+          </button>
+          <option value="">Todas</option>
+          <option value="PENDING">Pendiente</option>
+          <option value="ACTIVE">Vigente</option>
+          <option value="EXPIRING">Por vencer</option>
+          <option value="EXPIRED">Vencido</option>
+        </select>
+      </div>
+      @if (filtering()) {
+        <button type="button" class="clear" (click)="clearFilters()">Quitar filtros</button>
+      }
+    </div>
+  }
+
+  @if (failed()) {
+    @if (!unreachable()) {
+      <p class="lead">No se pudieron cargar los contratos.</p>
+    }
+  } @else if (contracts(); as contracts) {
+    @if (openFailed()) {
+      <p class="notice" role="alert">{{ openFailed() }}</p>
+    }
+    @if (contracts.length === 0) {
+      <p class="lead">{{ filtering() ? 'No hay contratos con esos filtros.' : 'Todavía no hay contratos.' }}</p>
+    } @else {
+      <ul class="register">
+        @for (contract of visible(); track contract.id) {
+          <li>
+            <article class="entry">
+              <div class="who">
+                <h2>{{ contract.cliente }}</h2>
+                @if (contract.representante) {
+                  <p>{{ contract.representante }}</p>
+                }
+                <p>{{ contract.plan }}</p>
+                <p>{{ date(contract.inicio) }} al {{ date(contract.fin) }}</p>
+              </div>
+              <div class="marks">
+                <span class="state" [attr.data-kind]="contract.estado">{{ contract.estadoNombre }}</span>
+                @if (contract.vigencia) {
+                  <span class="state" [attr.data-kind]="contract.vigencia">{{ contract.vigenciaNombre }}</span>
+                }
+              </div>
+              <footer class="entry-actions">
+                @if (contract.firmado) {
+                  <div class="entry-docs">
+                    <button type="button" class="open" (click)="openSigned(contract.id)">
+                      {{ opening() === contract.id ? 'Abriendo…' : 'Ver documento firmado' }}
+                      <span class="visually-hidden"> de {{ contract.cliente }}</span>
+                    </button>
+                  </div>
+                } @else {
+                  <a class="revise" [routerLink]="['/contracts', contract.id, 'edit']">
+                    Editar
+                    <span class="visually-hidden"> contrato de {{ contract.cliente }}</span>
+                  </a>
+                  <div class="entry-docs">
+                    <button
+                      type="button"
+                      class="open"
+                      [disabled]="downloading() === contract.id"
+                      (click)="download(contract.id)"
+                    >
+                      @if (downloading() === contract.id) {
+                        <progress class="loading-spinner" aria-hidden="true"></progress>
+                        <span>Descargando…</span>
+                      } @else {
+                        <ng-icon name="lucideDownload" class="action-icon" aria-hidden="true" />
+                        <span>Descargar</span>
+                      }
+                      <span class="visually-hidden"> contrato de {{ contract.cliente }}</span>
+                    </button>
+                    <label class="upload">
+                      <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        [disabled]="uploading() === contract.id || downloading() === contract.id"
+                        (change)="upload(contract.id, $event)"
+                      />
+                      @if (uploading() === contract.id) {
+                        <progress class="loading-spinner" aria-label="Subiendo documento"></progress>
+                        <span aria-hidden="true">Subiendo…</span>
+                      } @else {
+                        <ng-icon name="lucideUpload" class="upload-icon" aria-hidden="true" />
+                        <span>Subir firmado</span>
+                      }
+                      <span class="visually-hidden"> de {{ contract.cliente }}</span>
+                    </label>
+                  </div>
+                }
+              </footer>
+            </article>
+          </li>
+        }
+      </ul>
+      @if (pageCount() > 1) {
+        <div class="pager">
+          <p class="page-where" aria-live="polite" aria-atomic="true">Página {{ page() }} de {{ pageCount() }}</p>
+          <nav class="pages" aria-label="Páginas">
+            <button type="button" (click)="go(page() - 1)" [disabled]="page() === 1">Anterior</button>
+            <ol>
+              @for (number of pages(); track number) {
+                <li>
+                  <button
+                    type="button"
+                    [attr.aria-current]="number === page() ? 'page' : null"
+                    (click)="go(number)"
+                  >
+                    <span class="visually-hidden">Página </span>{{ number }}
+                  </button>
+                </li>
+              }
+            </ol>
+            <button type="button" (click)="go(page() + 1)" [disabled]="page() === pageCount()">Siguiente</button>
+          </nav>
+        </div>
+      }
+    }
+  } @else {
+    <ul class="register" aria-busy="true">
+      @for (row of skeleton; track row) {
+        <li>
+          <article class="entry" aria-hidden="true">
+            <div class="who">
+              <span class="skeleton name"></span>
+              <span class="skeleton line"></span>
+              <span class="skeleton line short"></span>
+            </div>
+            <div class="marks">
+              <span class="skeleton stamp"></span>
+              <span class="skeleton stamp slim"></span>
+            </div>
+            <footer class="entry-actions">
+              <span class="skeleton action"></span>
+              <div class="entry-docs">
+                <span class="skeleton action"></span>
+                <span class="skeleton action wide"></span>
+              </div>
+            </footer>
+          </article>
+        </li>
+      }
+    </ul>
+    <p class="visually-hidden">Cargando contratos.</p>
+  }
+</app-shell>

@@ -1,0 +1,143 @@
+:host {
+  display: block;
+}
+
+h1 {
+  margin: 0;
+  max-width: 16ch;
+  scroll-margin-top: 1rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+h1:focus-visible {
+  outline-offset: 4px;
+}
+
+.lead {
+  max-width: 36rem;
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+}
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14.5rem), 1fr));
+  gap: 0.85rem;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shelf a {
+  display: block;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  height: 100%;
+  min-height: 9.25rem;
+  padding: 1rem 1rem 1.15rem;
+  border: 2px solid #c8c8c8;
+  background: #fff;
+}
+
+.shelf a:hover .sheet,
+.shelf a:focus-visible .sheet {
+  border-color: var(--accent);
+}
+
+.shelf a:hover,
+.shelf a:focus-visible {
+  outline: none;
+}
+
+.mark {
+  --ng-icon__size: 1.5rem;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  color: var(--accent);
+  line-height: 0;
+}
+
+:host ::ng-deep .mark svg {
+  overflow: visible;
+  display: block;
+}
+
+.sheet h2 {
+  margin: 0.2rem 0 0;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+.sheet p {
+  margin: 0;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.skeleton {
+  display: block;
+  background: color-mix(in srgb, var(--control) 35%, var(--floor));
+}
+
+.skeleton.mark {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+.skeleton.title {
+  width: min(8rem, 80%);
+  height: 1.35rem;
+  margin-top: 0.35rem;
+}
+
+.skeleton.line {
+  width: min(11rem, 92%);
+  height: 0.75rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (forced-colors: active) {
+  .sheet {
+    border-color: ButtonText;
+    background: Canvas;
+  }
+
+  .shelf a:hover .sheet,
+  .shelf a:focus-visible .sheet {
+    border-color: Highlight;
+  }
+
+  .skeleton {
+    background: GrayText;
+    forced-color-adjust: none;
+  }
+}

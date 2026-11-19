@@ -1,0 +1,233 @@
+:host {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--rail-ink);
+  background: var(--rail);
+  color-scheme: dark;
+  scrollbar-color: var(--rail-ink) var(--rail);
+}
+
+.page {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  padding:
+    max(1.5rem, env(safe-area-inset-top))
+    max(1.5rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom))
+    max(1.5rem, env(safe-area-inset-left));
+}
+
+.login {
+  width: min(24rem, 100%);
+  padding: 1.5rem 1.4rem 1.4rem;
+  background: var(--floor);
+  color: var(--ink);
+  color-scheme: light;
+  container-type: inline-size;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 1.35rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.mark {
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: none;
+  display: block;
+  object-fit: contain;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 1.35rem;
+}
+
+.field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding-bottom: 1.45rem;
+}
+
+label {
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--control);
+  border-radius: 0.2rem;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+input:focus-visible {
+  border-color: var(--focus);
+  background: var(--floor);
+}
+
+input:user-invalid {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.password {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+
+.error,
+.form-error {
+  margin: 0;
+  padding-left: 0.55rem;
+  border-left: 3px solid transparent;
+  color: var(--danger);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  visibility: hidden;
+}
+
+.error {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+}
+
+.form-error {
+  display: block;
+  min-block-size: 1.4em;
+}
+
+@container (max-width: 18.75rem) {
+  .field:has(#correo) {
+    padding-bottom: 2.8rem;
+  }
+}
+
+input:user-invalid + .error,
+.password:has(input:user-invalid) + .error,
+.form-error.shown {
+  border-left-color: var(--danger);
+  visibility: visible;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+button[type='submit'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+button[type='submit']:disabled {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+button {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.2rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 150ms ease-out;
+}
+
+button:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--on-accent));
+}
+
+button:focus-visible {
+  outline-color: var(--focus);
+}
+
+.password button {
+  min-width: 5.5rem;
+  border: 1px solid var(--control);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.password button:hover {
+  background: var(--floor);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login {
+    animation: arrive 0.4s ease-out both;
+  }
+
+  button {
+    transition:
+      background-color 150ms ease-out,
+      scale 150ms ease-out;
+  }
+
+  button:active {
+    scale: 0.98;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .login,
+  button,
+  input {
+    border: 1px solid ButtonText;
+  }
+}

@@ -1,0 +1,351 @@
+:host {
+  display: block;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: clip;
+  color: var(--ink);
+  background: var(--floor);
+}
+
+.sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.skip {
+  position: absolute;
+  z-index: 2;
+  left: max(0.75rem, env(safe-area-inset-left));
+  top: max(0.75rem, env(safe-area-inset-top));
+  padding: 0.45rem 0.7rem;
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip:not(:focus) {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 15.5rem 1fr;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: clip;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-left: 6px solid var(--accent);
+  padding:
+    max(1.4rem, env(safe-area-inset-top))
+    0.8rem
+    max(1.2rem, env(safe-area-inset-bottom))
+    max(0.7rem, env(safe-area-inset-left));
+  background: var(--rail);
+  color: var(--rail-ink);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0 0.35rem 1.8rem;
+}
+
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-inline-size: 0;
+  margin-top: auto;
+}
+
+.account-person {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0.3rem 0.7rem;
+}
+
+.account-initial {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
+}
+
+.account-label {
+  margin: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sign-out {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  margin: 0 0.7rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgb(231 242 236 / 45%);
+  background: transparent;
+  color: var(--rail-ink);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sign-out:hover {
+  border-color: var(--rail-ink);
+  background: rgb(255 255 255 / 10%);
+}
+
+.sign-out:active {
+  background: rgb(255 255 255 / 22%);
+}
+
+.sign-out:focus-visible {
+  outline-color: var(--rail-ink);
+}
+
+.sign-out-dialog {
+  width: min(22rem, calc(100% - 2rem));
+  padding: 1.25rem 1.35rem 1.15rem;
+  border: 0;
+  border-left: 6px solid var(--accent);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.sign-out-dialog h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.sign-out-dialog p {
+  margin: 0 0 1.1rem;
+  line-height: 1.5;
+}
+
+.sign-out-dialog form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.sign-out-dialog button {
+  min-height: 2.5rem;
+  min-inline-size: 7.5rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sign-out-dialog button:hover {
+  background: rgb(20 33 28 / 6%);
+}
+
+.sign-out-dialog button:active {
+  background: rgb(20 33 28 / 12%);
+}
+
+.sign-out-dialog .dialog-confirm {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.sign-out-dialog .dialog-confirm:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--on-accent));
+}
+
+.sign-out-dialog .dialog-confirm:active {
+  background: color-mix(in srgb, var(--accent) 74%, var(--on-accent));
+}
+
+.sign-out-dialog button:disabled {
+  cursor: default;
+}
+
+.brand-name {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.5rem;
+  padding: 0.3rem 0.7rem;
+  color: inherit;
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+nav a:hover {
+  background: rgb(255 255 255 / 10%);
+}
+
+nav a[aria-current='page'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+nav a[aria-current='page']:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--on-accent));
+}
+
+nav a:focus-visible {
+  outline-color: var(--rail-ink);
+}
+
+.mark {
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+}
+
+.icon {
+  flex: 0 0 auto;
+  --ng-icon__size: 1.1rem;
+  color: inherit;
+  overflow: visible;
+}
+
+:host ::ng-deep .icon svg {
+  overflow: visible;
+  display: block;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding:
+    max(2.4rem, env(safe-area-inset-top))
+    max(2.5rem, env(safe-area-inset-right))
+    max(3rem, env(safe-area-inset-bottom))
+    2.5rem;
+}
+
+@media (pointer: coarse) {
+  nav a,
+  .sign-out,
+  .sign-out-dialog button {
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 720px) {
+  :host {
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .sidebar {
+    height: auto;
+    overflow: visible;
+    border-left: 0;
+    border-top: 6px solid var(--accent);
+  }
+
+  nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .account {
+    margin-top: 1rem;
+  }
+
+  .content {
+    overflow: visible;
+    padding: 1.4rem max(1rem, env(safe-area-inset-right)) 2rem max(1rem, env(safe-area-inset-left));
+  }
+}
+
+@media (forced-colors: active) {
+  .sidebar,
+  nav a[aria-current='page'],
+  .account-initial,
+  .sign-out,
+  .sign-out-dialog,
+  .dialog-confirm {
+    border: 1px solid ButtonText;
+  }
+}

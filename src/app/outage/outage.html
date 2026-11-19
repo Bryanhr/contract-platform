@@ -1,0 +1,13 @@
+<p class="visually-hidden" aria-live="assertive" aria-atomic="true">
+  {{ unreachable() ? 'SERVIT no responde. Espera un momento y vuelve a intentarlo.' : '' }}
+</p>
+<div class="slip" [class.shown]="unreachable()" [attr.inert]="unreachable() ? null : ''">
+  <span class="badge" aria-hidden="true">
+    <ng-icon name="lucideTriangleAlert" class="warn" />
+  </span>
+  <div class="copy">
+    <p class="lead">SERVIT no responde.</p>
+    <p class="next">Espera un momento y vuelve a intentarlo.</p>
+  </div>
+  <button type="button" (click)="dismiss()">Cerrar</button>
+</div>

@@ -1,0 +1,62 @@
+<main class="page">
+  <div class="login">
+    <p class="brand">
+      <img class="mark" src="servit-mark.svg" width="26" height="26" alt="" aria-hidden="true" />
+      <span translate="no">SERVIT</span>
+    </p>
+
+    <h1>Iniciar sesión</h1>
+
+    <form #session novalidate (submit)="submit($event)">
+      <div class="field">
+        <label for="correo">Correo</label>
+        <input
+          id="correo"
+          name="correo"
+          type="email"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          enterkeyhint="next"
+          required
+          aria-invalid="false"
+          data-error="correo-error"
+          placeholder="nombre@empresa.com"
+        />
+        <p id="correo-error" class="error">Error: escribe el correo.</p>
+      </div>
+
+      <div class="field">
+        <label for="contrasena">Contraseña</label>
+        <div class="password">
+          <input
+            id="contrasena"
+            name="contrasena"
+            [type]="passwordVisible ? 'text' : 'password'"
+            autocomplete="current-password"
+            spellcheck="false"
+            enterkeyhint="done"
+            required
+            aria-invalid="false"
+            data-error="contrasena-error"
+            placeholder="Tu contraseña"
+          />
+          <button type="button" (click)="togglePassword()">
+            {{ passwordVisible ? 'Ocultar' : 'Mostrar' }}
+          </button>
+        </div>
+        <p id="contrasena-error" class="error">Error: escribe la contraseña.</p>
+      </div>
+
+      <p class="form-error" role="alert" [class.shown]="!!failure()">{{ failure() }}</p>
+      <button type="submit" [disabled]="pending()" [attr.aria-busy]="pending() ? 'true' : null">
+        @if (pending()) {
+          <progress class="loading-spinner" aria-label="Iniciando sesión"></progress>
+          <span aria-hidden="true">Iniciando…</span>
+        } @else {
+          Iniciar sesión
+        }
+      </button>
+    </form>
+  </div>
+</main>

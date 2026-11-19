@@ -1,0 +1,28 @@
+<app-shell current="inicio">
+  <h1 id="contenido" tabindex="-1" translate="no">SERVIT</h1>
+  <p class="lead">Tres libros de trabajo: los clientes, los planes y los contratos.</p>
+
+  <ul class="modules">
+    @for (module of modules; track module.id) {
+      <li>
+        @if (module.path) {
+          <a class="module" [routerLink]="module.path">
+            <ng-icon [name]="module.icon" class="module-icon" aria-hidden="true" />
+            <span class="module-copy">
+              <span class="module-name">{{ module.name }}</span>
+              <span class="module-summary">{{ module.summary }}</span>
+            </span>
+          </a>
+        } @else {
+          <a class="module" [id]="module.id" [href]="'#' + module.id">
+            <ng-icon [name]="module.icon" class="module-icon" aria-hidden="true" />
+            <span class="module-copy">
+              <span class="module-name">{{ module.name }}</span>
+              <span class="module-summary">{{ module.summary }}</span>
+            </span>
+          </a>
+        }
+      </li>
+    }
+  </ul>
+</app-shell>
