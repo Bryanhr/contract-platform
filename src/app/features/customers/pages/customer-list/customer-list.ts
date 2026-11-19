@@ -16,6 +16,7 @@ import { deleteCustomer, getCustomers } from '../../services/customer-api';
 })
 export class CustomerList {
   private readonly removeDialog = viewChild<ElementRef<HTMLDialogElement>>('removeDialog');
+  private noticeTimer: number | undefined;
 
   protected readonly pageSize = 8;
   protected readonly customers = signal<Client[] | null>(null);
@@ -31,8 +32,9 @@ export class CustomerList {
   protected readonly matches = computed(() => {
     const list = this.customers() ?? [];
     const query = plain(this.query());
-    if (!query) return list;
-    return list.filter((client) => plain(client.empresa).includes(query) || client.ruc.includes(query));
+    return list
+      .filter((client) => !query || plain(client.empresa).includes(query) || client.ruc.includes(query))
+      .sort((left, right) => left.empresa.localeCompare(right.empresa, 'es', { sensitivity: 'base' }));
   });
 
   protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.matches().length / this.pageSize)));
@@ -49,6 +51,7 @@ export class CustomerList {
   }
 
   protected search(event: Event) {
+    this.clearNotice();
     this.query.set((event.target as HTMLInputElement).value);
     this.page.set(1);
   }
@@ -67,7 +70,7 @@ export class CustomerList {
 
   protected askRemove(client: Client) {
     this.removing.set(client);
-    this.notice.set('');
+    this.clearNotice();
     const dialog = this.removeDialog()?.nativeElement;
     if (typeof dialog?.showModal === 'function') dialog.showModal();
   }
@@ -75,6 +78,7 @@ export class CustomerList {
   protected async confirmRemove() {
     const client = this.removing();
     if (!client || this.deleting()) return;
+    this.clearNotice();
     this.deleting.set(true);
     try {
       await deleteCustomer(client.id);
@@ -83,7 +87,7 @@ export class CustomerList {
     } catch (error) {
       if (!isUnreachable(error)) {
         const status = typeof error === 'object' && error && 'status' in error ? error.status : 0;
-        this.notice.set(
+        this.setNotice(
           status === 409
             ? `${client.empresa} tiene contratos, por eso no se puede eliminar.`
             : `No se pudo eliminar a ${client.empresa}.`,
@@ -92,7 +96,20 @@ export class CustomerList {
     } finally {
       this.deleting.set(false);
       this.removeDialog()?.nativeElement.close();
+      if (this.notice()) document.getElementById('buscar')?.focus();
     }
+  }
+
+  private setNotice(message: string) {
+    this.clearNotice();
+    this.notice.set(message);
+    this.noticeTimer = window.setTimeout(() => this.clearNotice(), 5000);
+  }
+
+  private clearNotice() {
+    if (this.noticeTimer !== undefined) window.clearTimeout(this.noticeTimer);
+    this.noticeTimer = undefined;
+    this.notice.set('');
   }
 
   private async load() {

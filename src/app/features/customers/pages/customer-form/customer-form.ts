@@ -27,6 +27,7 @@ const blank: Client = {
 })
 export class CustomerForm {
   private readonly router = inject(Router);
+  private failureTimer: number | undefined;
 
   protected readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
   protected readonly editing = Boolean(this.id);
@@ -58,7 +59,7 @@ export class CustomerForm {
     const client = this.draft();
     if (!client || this.saving()) return;
     this.checked.set(true);
-    this.failure.set('');
+    this.clearFailure();
     const errors = customerErrors(client);
     this.errors.set(errors);
     const first = (['empresa', 'ruc', 'correo'] as const).find((field) => errors[field]);
@@ -84,15 +85,28 @@ export class CustomerForm {
         this.errors.set({ ruc: 'Ya existe un cliente con este RUC.' });
         document.getElementById('ruc')?.focus();
       } else if (status === 404) {
-        this.failure.set('Este cliente ya no existe.');
+        this.setFailure('Este cliente ya no existe.');
       } else if (status === 400) {
-        this.failure.set('Revisa los datos e inténtalo otra vez.');
+        this.setFailure('Revisa los datos e inténtalo otra vez.');
       } else {
-        this.failure.set('No se pudo guardar el cliente.');
+        this.setFailure('No se pudo guardar el cliente.');
       }
+
     } finally {
       this.saving.set(false);
     }
+  }
+
+  private setFailure(message: string) {
+    this.clearFailure();
+    this.failure.set(message);
+    this.failureTimer = window.setTimeout(() => this.clearFailure(), 5000);
+  }
+
+  private clearFailure() {
+    if (this.failureTimer !== undefined) window.clearTimeout(this.failureTimer);
+    this.failureTimer = undefined;
+    this.failure.set('');
   }
 
   private async load() {
