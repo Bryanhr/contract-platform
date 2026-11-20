@@ -96,6 +96,10 @@
                 }
               </div>
               <footer class="entry-actions">
+                <a class="revise" [routerLink]="['/contracts', contract.id]">
+                  Detalle
+                  <span class="visually-hidden"> del contrato de {{ contract.cliente }}</span>
+                </a>
                 @if (contract.firmado) {
                   <div class="entry-docs">
                     <button type="button" class="open" (click)="openSigned(contract.id)">
