@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { ContractDraft } from './features/contracts/pages/contract-draft/contract-draft';
+import { ContractDetail } from './features/contracts/pages/contract-detail/contract-detail';
 import { ContractList } from './features/contracts/pages/contract-list/contract-list';
 import { TemplatePick } from './features/contracts/pages/template-pick/template-pick';
 import { CustomerForm } from './features/customers/pages/customer-form/customer-form';
@@ -38,6 +39,7 @@ export const routes: Routes = [
       { path: 'contracts', component: ContractList },
       { path: 'contracts/new', component: TemplatePick },
       { path: 'contracts/new/:template', component: ContractDraft },
+      { path: 'contracts/:id', component: ContractDetail },
       { path: 'contracts/:id/edit', component: ContractDraft },
     ],
   },

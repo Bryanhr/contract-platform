@@ -1,0 +1,76 @@
+<app-shell current="contratos">
+  <a class="back" routerLink="/contracts">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a contratos
+  </a>
+
+  <h1 id="contenido" tabindex="-1">Detalle del contrato</h1>
+
+  @if (loading()) {
+    <div class="loading" aria-busy="true">
+      <progress class="loading-spinner" aria-label="Cargando contrato"></progress>
+      <p class="visually-hidden">Cargando contrato.</p>
+    </div>
+  } @else if (failed()) {
+    <p class="lead" role="alert">{{ failed() }}</p>
+  } @else if (contract(); as contract) {
+    <section class="detail" aria-labelledby="contract-title">
+      <header class="detail-head">
+        <div>
+          <h2 id="contract-title">{{ contract.customerName }}</h2>
+          @if (contract.customerRepresentative) {
+            <p>{{ contract.customerRepresentative }}</p>
+          }
+        </div>
+        <div class="marks">
+          <span class="state">{{ statusName(contract.status) }}</span>
+          @if (contract.validity) {
+            <span class="state">{{ validityName(contract.validity) }}</span>
+          }
+        </div>
+      </header>
+
+      <dl class="record">
+        <div>
+          <dt>Plan</dt>
+          <dd>{{ contract.planName }}</dd>
+        </div>
+        <div>
+          <dt>Fecha de emisión</dt>
+          <dd>{{ date(contract.issueDate ?? '') || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Inicio del servicio</dt>
+          <dd>{{ date(contract.startDate ?? '') || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Fin del servicio</dt>
+          <dd>{{ date(contract.endDate ?? '') || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Monto</dt>
+          <dd>{{ contract.amount == null ? '—' : money(contract.amount) }}</dd>
+        </div>
+        <div>
+          <dt>Fecha de firma</dt>
+          <dd>{{ date(contract.signedDate ?? '') || '—' }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="services" aria-labelledby="services-title">
+      <h2 id="services-title">Servicios del plan «{{ contract.planName }}»</h2>
+      @if (servicesFailed()) {
+        <p class="lead" role="alert">No se pudieron cargar los servicios del plan.</p>
+      } @else if (services().length === 0) {
+        <p class="lead">Este plan no tiene servicios registrados.</p>
+      } @else {
+        <ul>
+          @for (service of services(); track service.id) {
+            <li>{{ serviceLine(service) }}</li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</app-shell>
