@@ -15,6 +15,21 @@ let plansRequest: Promise<Plan[]> | undefined;
 const planDetailCache = new Map<number, Promise<PlanDetail>>();
 const contractsCache = new Map<string, Promise<ContractSummary[]>>();
 
+interface PlanServicePayload {
+  id?: number;
+  supportServiceId?: number;
+  name?: string;
+  serviceName?: string;
+  serviceType?: string | null;
+  unit?: string | null;
+  monthlyLimit?: number | null;
+  extraCost?: number | null;
+}
+
+interface PlanDetailPayload extends Omit<PlanDetail, 'services'> {
+  services?: PlanServicePayload[] | null;
+}
+
 export function getTemplates() {
   templatesRequest ??= api.get<Template[]>('/templates').catch((error: unknown) => {
     templatesRequest = undefined;
@@ -36,11 +51,20 @@ export function getPlan(id: number) {
   if (cached) return cached;
 
   const request = api
-    .get<PlanDetail>(`/plans/${id}`)
-    .then((plan) => ({ ...plan, services: plan.services ?? [] }))
-    .catch((error: unknown) => {
+    .get<PlanDetailPayload>(`/plans/${id}`)
+    .then((plan): PlanDetail => ({
+      ...plan,
+      services: (plan.services ?? []).map((service) => ({
+        id: service.supportServiceId ?? service.id ?? 0,
+        name: service.name ?? service.serviceName ?? '',
+        serviceType: service.serviceType ?? null,
+        unit: service.unit ?? null,
+        monthlyLimit: service.monthlyLimit ?? null,
+        extraCost: service.extraCost ?? null,
+      })),
+    }))
+    .finally(() => {
       planDetailCache.delete(id);
-      throw error;
     });
   planDetailCache.set(id, request);
   return request;
