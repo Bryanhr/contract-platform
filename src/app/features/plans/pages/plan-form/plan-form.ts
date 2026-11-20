@@ -34,6 +34,14 @@ const blank: PlanDraft = {
   durationMonths: '',
 };
 
+type FeedbackScope = 'plan' | 'services' | 'add' | `service:${number}`;
+type FeedbackKind = 'success' | 'error';
+
+interface Feedback {
+  message: string;
+  kind: FeedbackKind;
+}
+
 @Component({
   selector: 'app-plan-form',
   imports: [Shell, RouterLink, NgIcon],
@@ -51,9 +59,8 @@ export class PlanForm {
   protected readonly draft = signal<PlanDraft | null>(this.editing ? null : { ...blank });
   protected readonly failed = signal('');
   protected readonly saving = signal(false);
-  protected readonly checked = signal(false);
   protected readonly errors = signal<PlanErrors>({});
-  protected readonly failure = signal('');
+  protected readonly feedbacks = signal<Record<string, Feedback>>({});
   protected readonly unreachable = unreachable;
   protected readonly planServices = signal<PlanServiceLink[] | null>(null);
   protected readonly serviceOptions = signal<SupportService[]>([]);
@@ -62,8 +69,6 @@ export class PlanForm {
     return this.serviceOptions().filter((service) => !associated.has(service.id));
   });
   protected readonly serviceLoading = signal(false);
-  protected readonly serviceFailure = signal('');
-  protected readonly serviceNotice = signal('');
   protected readonly addingService = signal(false);
   protected readonly savingService = signal<number | null>(null);
   protected readonly removingService = signal<number | null>(null);
@@ -78,8 +83,25 @@ export class PlanForm {
   protected set(event: Event) {
     const field = event.target as HTMLInputElement;
     const key = field.name as PlanField;
+    this.clearAllFeedback();
     this.draft.update((current) => (current ? { ...current, [key]: field.value } : current));
-    if (this.checked()) this.errors.set(planErrors(this.draft()!));
+  }
+
+  protected feedback(scope: string) {
+    return this.feedbacks()[scope]?.message ?? '';
+  }
+
+  protected feedbackKind(scope: string) {
+    return this.feedbacks()[scope]?.kind ?? 'error';
+  }
+
+  protected selectedServiceOption() {
+    const id = Number(this.selectedService());
+    return this.serviceOptions().find((service) => service.id === id);
+  }
+
+  protected clearMessagesOnEdit() {
+    this.clearAllFeedback();
   }
 
   protected error(field: PlanField) {
@@ -90,14 +112,14 @@ export class PlanForm {
     event.preventDefault();
     const draft = this.draft();
     if (!draft || this.saving()) return;
-    this.checked.set(true);
-    this.clearFeedback('failure');
+    this.clearAllFeedback();
     const errors = planErrors(draft);
     this.errors.set(errors);
     const first = (['name', 'responseTimeHours', 'monthlyCost', 'durationMonths'] as const).find(
       (field) => errors[field],
     );
     if (first) {
+      this.setFeedback('plan', 'Corrige los campos marcados e inténtalo otra vez.');
       document.getElementById(first)?.focus();
       return;
     }
@@ -107,6 +129,7 @@ export class PlanForm {
 
   protected setServiceField(field: 'selectedService' | 'newMonthlyLimit' | 'newExtraCost', event: Event) {
     const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
+    this.clearAllFeedback();
     if (field === 'selectedService') this.selectedService.set(value);
     else if (field === 'newMonthlyLimit') this.newMonthlyLimit.set(value);
     else this.newExtraCost.set(value);
@@ -114,15 +137,19 @@ export class PlanForm {
 
   protected async associateService(event: Event) {
     event.preventDefault();
-    if (!this.selectedService() || this.addingService()) return;
+    if (this.addingService()) return;
+    this.clearAllFeedback();
+    if (!this.selectedService()) {
+      this.setFeedback('add', 'Selecciona un servicio.');
+      return;
+    }
     const values = serviceValues(this.newMonthlyLimit(), this.newExtraCost());
     if (values.error) {
-      this.setFeedback('service', values.error);
+      this.setFeedback('add', values.error);
       return;
     }
 
     this.addingService.set(true);
-    this.clearFeedback('service');
     try {
       await addPlanService(this.id, {
         supportServiceId: Number(this.selectedService()),
@@ -133,12 +160,13 @@ export class PlanForm {
       this.newMonthlyLimit.set('');
       this.newExtraCost.set('');
       await this.loadServices();
+      this.setFeedback('add', 'Servicio asociado al plan.', 'success');
     } catch (error) {
       if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
       else if (!isUnreachable(error)) {
         const status = apiErrorStatus(error);
         this.setFeedback(
-          'service',
+          'add',
           status === 409
             ? 'Este servicio ya está asociado al plan.'
             : status === 400
@@ -156,26 +184,28 @@ export class PlanForm {
   protected async saveService(event: Event, service: PlanServiceLink, monthlyLimit: string, extraCost: string) {
     event.preventDefault();
     if (this.savingService() !== null) return;
+    this.clearAllFeedback();
     const values = serviceValues(monthlyLimit, extraCost);
+    const scope = `service:${service.supportServiceId}` as const;
     if (values.error) {
-      this.setFeedback('service', values.error);
+      this.setFeedback(scope, values.error);
       return;
     }
 
     this.savingService.set(service.supportServiceId);
-    this.clearFeedback('service');
     try {
       await updatePlanService(this.id, service.supportServiceId, {
         monthlyLimit: values.monthlyLimit,
         extraCost: values.extraCost,
       });
       await this.loadServices();
+      this.setFeedback(scope, 'Cambios del servicio guardados.', 'success');
     } catch (error) {
       if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
       else if (!isUnreachable(error)) {
         const status = apiErrorStatus(error);
         this.setFeedback(
-          'service',
+          scope,
           status === 400
             ? 'Revisa el límite y el costo adicional.'
             : status === 404
@@ -190,16 +220,17 @@ export class PlanForm {
 
   protected async removeService(service: PlanServiceLink) {
     if (this.removingService() !== null) return;
+    this.clearAllFeedback();
     this.removingService.set(service.supportServiceId);
-    this.clearFeedback('service');
     try {
       await removePlanService(this.id, service.supportServiceId);
       await this.loadServices();
+      this.setFeedback('services', 'Servicio quitado del plan.', 'success');
     } catch (error) {
       if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
       else if (!isUnreachable(error)) {
         this.setFeedback(
-          'service',
+          `service:${service.supportServiceId}`,
           apiErrorStatus(error) === 404
             ? 'Este servicio ya no está asociado al plan.'
             : 'No se pudo quitar el servicio del plan.',
@@ -215,7 +246,9 @@ export class PlanForm {
       const request = toPlanRequest(draft);
       if (this.editing) await updatePlan(this.id, request);
       else await createPlan(request);
-      await this.router.navigateByUrl('/plans');
+      await this.router.navigateByUrl('/plans', {
+        state: { notice: this.editing ? 'Plan actualizado correctamente.' : 'Plan creado correctamente.' },
+      });
     } catch (error) {
       if (isUnreachable(error)) return;
       const status = apiErrorStatus(error);
@@ -223,15 +256,15 @@ export class PlanForm {
         await this.router.navigateByUrl('/login');
       } else if (status === 400) {
         this.errors.set(apiFieldErrors(error));
-        this.setFeedback('failure', 'Revisa los datos e inténtalo otra vez.');
+        this.setFeedback('plan', 'Revisa los datos e inténtalo otra vez.');
       } else if (status === 409) {
         this.errors.set({ name: 'Ya existe un plan con este nombre.' });
-        this.clearFeedback('failure');
+        this.setFeedback('plan', 'Ya existe un plan con este nombre.');
         document.getElementById('name')?.focus();
       } else if (status === 404) {
-        this.setFeedback('failure', 'Este plan ya no existe.');
+        this.setFeedback('plan', 'Este plan ya no existe.');
       } else {
-        this.setFeedback('failure', problemDetail(error) || 'No se pudo guardar el plan.');
+        this.setFeedback('plan', problemDetail(error) || 'No se pudo guardar el plan.');
       }
 
     } finally {
@@ -239,17 +272,33 @@ export class PlanForm {
     }
   }
 
-  private setFeedback(scope: 'failure' | 'service', message: string) {
+  private setFeedback(scope: FeedbackScope, message: string, kind: FeedbackKind = 'error') {
     this.clearFeedback(scope);
-    (scope === 'failure' ? this.failure : this.serviceNotice).set(message);
-    this.feedbackTimers.set(scope, window.setTimeout(() => this.clearFeedback(scope), 5000));
+    this.feedbacks.update((current) => ({ ...current, [scope]: { message, kind } }));
+    this.feedbackTimers.set(
+      scope,
+      window.setTimeout(() => {
+        this.clearFeedback(scope);
+        if (scope === 'plan') this.errors.set({});
+      }, 5000),
+    );
   }
 
-  private clearFeedback(scope: 'failure' | 'service') {
+  private clearFeedback(scope: FeedbackScope) {
     const timer = this.feedbackTimers.get(scope);
     if (timer !== undefined) window.clearTimeout(timer);
     this.feedbackTimers.delete(scope);
-    (scope === 'failure' ? this.failure : this.serviceNotice).set('');
+    this.feedbacks.update((current) => {
+      const { [scope]: _removed, ...remaining } = current;
+      return remaining;
+    });
+  }
+
+  private clearAllFeedback() {
+    for (const timer of this.feedbackTimers.values()) window.clearTimeout(timer);
+    this.feedbackTimers.clear();
+    this.feedbacks.set({});
+    this.errors.set({});
   }
 
   private async load() {
@@ -274,14 +323,15 @@ export class PlanForm {
 
   private async loadServices() {
     this.serviceLoading.set(true);
-    this.serviceFailure.set('');
     try {
       const [services, options] = await Promise.all([getPlanServices(this.id), getSupportServices()]);
       this.planServices.set(services);
       this.serviceOptions.set(options);
     } catch (error) {
       if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
-      else if (!isUnreachable(error)) this.serviceFailure.set('No se pudieron cargar los servicios del plan.');
+      else if (!isUnreachable(error)) {
+        this.setFeedback('services', 'No se pudieron cargar los servicios del plan.');
+      }
     } finally {
       this.serviceLoading.set(false);
     }
@@ -294,9 +344,9 @@ function serviceValues(monthlyLimit: string, extraCost: string) {
   const limit = Number(monthlyLimit);
   const cost = Number(extraCost);
 
-  if (!/^\d+$/.test(monthlyLimit.trim()) || !Number.isSafeInteger(limit) || limit < 0) {
+  if (!/^\d+$/.test(monthlyLimit.trim()) || !Number.isSafeInteger(limit) || limit < 1) {
     return {
-      error: 'El límite mensual debe ser un entero mayor o igual que 0.',
+      error: 'El límite mensual debe ser un entero mayor o igual que 1.',
       monthlyLimit: 0,
       extraCost: 0,
     };
