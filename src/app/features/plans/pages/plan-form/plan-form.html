@@ -91,7 +91,11 @@
         }
       </div>
 
-      <p class="form-error" role="alert">{{ failure() }}</p>
+      @if (feedback('plan'); as message) {
+        <p class="feedback" [class.error-feedback]="feedbackKind('plan') === 'error'" role="status">
+          {{ message }}
+        </p>
+      }
       <button class="submit" type="submit" [disabled]="saving()" [attr.aria-busy]="saving() ? 'true' : null">
         @if (saving()) {
           <progress class="loading-spinner" aria-label="Guardando plan"></progress>
@@ -105,57 +109,106 @@
     @if (editing) {
       <section class="plan-services" aria-labelledby="services-title">
         <h2 id="services-title">Servicios del plan</h2>
-        @if (serviceNotice()) {
-          <p class="form-error" role="alert">{{ serviceNotice() }}</p>
+        @if (feedback('services'); as message) {
+          <p class="feedback" [class.error-feedback]="feedbackKind('services') === 'error'" role="status">
+            {{ message }}
+          </p>
         }
-        @if (serviceFailure()) {
-          <p class="lead">{{ serviceFailure() }}</p>
-        } @else if (serviceLoading()) {
+        @if (serviceLoading()) {
           <progress class="loading-spinner page-loading" aria-label="Cargando servicios del plan"></progress>
         } @else if (planServices(); as services) {
+          <div class="service-columns" aria-hidden="true">
+            <span>Servicio</span>
+            <span>Tipo</span>
+            <span>Límite mensual / unidad</span>
+            <span>Costo adicional</span>
+            <span>Acciones</span>
+          </div>
           @if (services.length === 0) {
             <p class="lead">Este plan todavía no tiene servicios asociados.</p>
           } @else {
             <ul class="service-list">
               @for (service of services; track service.supportServiceId) {
                 <li class="service-entry">
-                  <div class="service-description">
-                    <h3>{{ service.name }}</h3>
-                    <p>{{ service.serviceType || 'Sin tipo' }}@if (service.unit) { · {{ service.unit }} }</p>
-                  </div>
-                  <form class="service-edit" (submit)="saveService($event, service, limit.value, cost.value)">
-                    <label>
-                      Límite mensual
-                      <input #limit type="number" min="0" step="1" required [value]="service.monthlyLimit" />
+                  <form
+                    class="service-row"
+                    novalidate
+                    (submit)="saveService($event, service, limit.value, cost.value)"
+                  >
+                    <div class="service-name">
+                      <span class="mobile-label">Servicio</span>
+                      <strong>{{ service.name }}</strong>
+                    </div>
+                    <div class="service-type">
+                      <span class="mobile-label">Tipo</span>
+                      <span>{{ service.serviceType || 'Sin tipo' }}</span>
+                    </div>
+                    <label class="service-limit">
+                      <span class="mobile-label">Límite mensual / unidad</span>
+                      <span class="limit-control">
+                        <input
+                          #limit
+                          type="number"
+                          min="1"
+                          step="1"
+                          required
+                          [value]="service.monthlyLimit"
+                          (input)="clearMessagesOnEdit()"
+                        />
+                        <span class="unit">{{ service.unit || '—' }}</span>
+                      </span>
                     </label>
-                    <label>
-                      Costo adicional
-                      <input #cost type="number" min="0" step="0.01" required [value]="service.extraCost" />
+                    <label class="service-cost">
+                      <span class="mobile-label">Costo adicional</span>
+                      <input
+                        #cost
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        required
+                        [value]="service.extraCost"
+                        (input)="clearMessagesOnEdit()"
+                      />
                     </label>
-                    <button class="service-save" type="submit" [disabled]="savingService() !== null">
-                      {{ savingService() === service.supportServiceId ? 'Guardando…' : 'Guardar' }}
-                    </button>
-                    <button
-                      class="service-remove"
-                      type="button"
-                      [disabled]="removingService() !== null"
-                      (click)="removeService(service)"
-                    >
-                      {{ removingService() === service.supportServiceId ? 'Quitando…' : 'Quitar' }}
-                    </button>
+                    <div class="service-actions">
+                      <button class="service-save" type="submit" [disabled]="savingService() !== null">
+                        {{ savingService() === service.supportServiceId ? 'Guardando…' : 'Guardar' }}
+                      </button>
+                      <button
+                        class="service-remove"
+                        type="button"
+                        [disabled]="removingService() !== null"
+                        (click)="removeService(service)"
+                      >
+                        {{ removingService() === service.supportServiceId ? 'Quitando…' : 'Quitar' }}
+                      </button>
+                    </div>
                   </form>
+                  @if (feedback('service:' + service.supportServiceId); as message) {
+                    <p
+                      class="feedback row-feedback"
+                      [class.error-feedback]="feedbackKind('service:' + service.supportServiceId) === 'error'"
+                      role="status"
+                    >
+                      {{ message }}
+                    </p>
+                  }
                 </li>
               }
             </ul>
           }
 
-          <form class="service-add" (submit)="associateService($event)">
-            <h3>Asociar servicio</h3>
+          @if (feedback('add'); as message) {
+            <p class="feedback row-feedback" [class.error-feedback]="feedbackKind('add') === 'error'" role="status">
+              {{ message }}
+            </p>
+          }
+          <form class="service-row service-add" novalidate (submit)="associateService($event)">
             @if (availableServiceOptions().length === 0) {
-              <p class="hint">No hay servicios disponibles para asociar.</p>
+              <p class="hint no-services">No hay servicios disponibles para asociar.</p>
             } @else {
-              <label>
-                Servicio
+              <label class="service-select">
+                <span class="mobile-label">Servicio</span>
                 <select
                   required
                   [value]="selectedService()"
@@ -163,23 +216,30 @@
                 >
                   <option value="">Selecciona un servicio</option>
                   @for (option of availableServiceOptions(); track option.id) {
-                    <option [value]="option.id">{{ option.name }} · {{ option.serviceTypeName }}</option>
+                    <option [value]="option.id">{{ option.name }}</option>
                   }
                 </select>
               </label>
-              <label>
-                Límite mensual
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  required
-                  [value]="newMonthlyLimit()"
-                  (input)="setServiceField('newMonthlyLimit', $event)"
-                />
+              <div class="service-type">
+                <span class="mobile-label">Tipo</span>
+                <span>{{ selectedServiceOption()?.serviceTypeName || '—' }}</span>
+              </div>
+              <label class="service-limit">
+                <span class="mobile-label">Límite mensual / unidad</span>
+                <span class="limit-control">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    [value]="newMonthlyLimit()"
+                    (input)="setServiceField('newMonthlyLimit', $event)"
+                  />
+                  <span class="unit">{{ selectedServiceOption()?.unit || '—' }}</span>
+                </span>
               </label>
-              <label>
-                Costo adicional
+              <label class="service-cost">
+                <span class="mobile-label">Costo adicional</span>
                 <input
                   type="number"
                   min="0"
@@ -189,9 +249,11 @@
                   (input)="setServiceField('newExtraCost', $event)"
                 />
               </label>
-              <button class="service-save" type="submit" [disabled]="addingService()">
-                {{ addingService() ? 'Asociando…' : 'Asociar servicio' }}
-              </button>
+              <div class="service-actions">
+                <button class="service-save" type="submit" [disabled]="addingService()">
+                  {{ addingService() ? 'Asociando…' : 'Agregar' }}
+                </button>
+              </div>
             }
           </form>
         }

@@ -47,6 +47,8 @@ export class PlanList {
   });
 
   constructor() {
+    const notice = this.router.getCurrentNavigation()?.extras.state?.['notice'];
+    if (typeof notice === 'string') this.setNotice(notice);
     void this.load();
   }
 

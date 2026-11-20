@@ -3,7 +3,7 @@ import { soles } from './soles';
 
 export function serviceLine(service: PlanService) {
   let line = service.name;
-  if (service.type) line += ` (${service.type})`;
+  if (service.serviceType) line += ` (${service.serviceType})`;
   if (service.monthlyLimit != null) {
     line += `: hasta ${service.monthlyLimit}`;
     if (service.unit) line += ` ${service.unit}`;
