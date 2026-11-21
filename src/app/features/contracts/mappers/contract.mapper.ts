@@ -19,6 +19,7 @@ export function toContract(contract: ContractResponse, representante = ''): Cont
     cliente: contract.customerName,
     representante: contratoRepresentante(contract, representante),
     plan: contract.planName,
+    startDate: contract.startDate ?? '',
     inicio: contract.startDate ?? '',
     fin: contract.endDate ?? '',
     ...FIRMA[contract.status],

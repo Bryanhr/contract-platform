@@ -7,6 +7,7 @@ export interface ContractSummary {
   cliente: string;
   representante: string;
   plan: string;
+  startDate: string;
   inicio: string;
   fin: string;
   firmado: boolean;

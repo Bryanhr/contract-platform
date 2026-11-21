@@ -21,6 +21,8 @@ export function readContractListState(params: ParamMap): { page: number; filters
       validity: validities.has(validity as ContractValidityFilter)
         ? (validity as ContractValidityFilter)
         : '',
+      startDate: readDate(params.get('startDate')),
+      endDate: readDate(params.get('endDate')),
     },
   };
 }
@@ -34,5 +36,13 @@ export function contractListQuery(
   if (page > 1) query['page'] = page;
   if (filters.status) query['status'] = filters.status;
   if (filters.validity) query['validity'] = filters.validity;
+  if (filters.startDate) query['startDate'] = filters.startDate;
+  if (filters.endDate) query['endDate'] = filters.endDate;
   return query;
+}
+
+function readDate(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return '';
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value ? '' : value;
 }
