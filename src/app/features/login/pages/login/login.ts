@@ -59,6 +59,7 @@ export class Login implements AfterViewInit, OnDestroy {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#e7eeea');
   }
 
+
   protected togglePassword() {
     this.passwordVisible = !this.passwordVisible;
   }
@@ -87,7 +88,7 @@ export class Login implements AfterViewInit, OnDestroy {
     try {
       await login(email, password);
       const target = nextPath(this.route.snapshot.queryParamMap.get('next'));
-      await this.router.navigateByUrl(target, { onSameUrlNavigation: 'reload', replaceUrl: true });
+      await this.router.navigateByUrl(target, { replaceUrl: true });
     } catch (error) {
       if (isUnreachable(error)) return;
       const status = typeof error === 'object' && error && 'status' in error ? error.status : 0;

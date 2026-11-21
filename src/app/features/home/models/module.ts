@@ -2,7 +2,7 @@ export interface HomeStat {
   id: string;
   icon: string;
   label: string;
-  value: number | null;
+  value: number;
 }
 
 export interface HomeGuide {
