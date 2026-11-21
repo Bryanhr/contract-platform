@@ -3,7 +3,7 @@ import { NgIcon } from '@ng-icons/core';
 import { Shell } from '../../../../shell/shell';
 import { homeIcons } from '../../icons';
 import { HomeGuide, HomeStat } from '../../models/module';
-import { loadHomeStats, readHomeStats } from '../../services/home-stats';
+import { homeStatCards, loadHomeStats, readHomeStats } from '../../services/home-stats';
 
 @Component({
   selector: 'app-home',
@@ -13,7 +13,7 @@ import { loadHomeStats, readHomeStats } from '../../services/home-stats';
   styleUrl: './home.css',
 })
 export class Home {
-  protected readonly stats = signal<HomeStat[]>(readHomeStats() ?? []);
+  protected readonly stats = signal<HomeStat[]>(readHomeStats() ?? homeStatCards);
 
   protected readonly guides: HomeGuide[] = [
     {

@@ -7,10 +7,19 @@ import { HomeStat } from '../models/module';
 
 const KEY = 'servit.homeStats';
 
+/** Cards always present from the first paint of Inicio. */
+export const homeStatCards: HomeStat[] = [
+  { id: 'clients', icon: 'lucideBuilding2', label: 'Clientes', value: null },
+  { id: 'services', icon: 'lucideWrench', label: 'Servicios', value: null },
+  { id: 'plans', icon: 'lucideLayers', label: 'Planes', value: null },
+  { id: 'templates', icon: 'lucideScrollText', label: 'Plantillas', value: null },
+  { id: 'contracts', icon: 'lucideFileText', label: 'Contratos', value: null },
+];
+
 let cachedStats: HomeStat[] | undefined;
 let statsRequest: Promise<HomeStat[]> | undefined;
 
-/** Sync read — used so Inicio can paint with numbers already available. */
+/** Sync read — Inicio paints with real counts when already known. */
 export function readHomeStats(): HomeStat[] | undefined {
   if (cachedStats) return cachedStats;
   try {
@@ -18,7 +27,10 @@ export function readHomeStats(): HomeStat[] | undefined {
     if (!raw) return;
     const parsed = JSON.parse(raw) as HomeStat[];
     if (!Array.isArray(parsed) || parsed.length === 0) return;
-    cachedStats = parsed;
+    cachedStats = parsed.map((stat) => ({
+      ...stat,
+      value: typeof stat.value === 'number' ? stat.value : null,
+    }));
     return cachedStats;
   } catch {
     return;
