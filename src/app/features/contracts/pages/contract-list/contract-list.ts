@@ -1,10 +1,13 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
 import { isUnreachable, unreachable } from '../../../../core/outage';
+import { EmptyState } from '../../../../shared/empty-state/empty-state';
+import { Toast, ToastTone } from '../../../../shared/toast/toast';
 import { Shell } from '../../../../shell/shell';
 import { formatCalendarDate } from '../../format/calendar';
 import { contractIcons } from '../../icons';
+import { contractListQuery, readContractListState } from '../../list-query';
 import { ContractSummary } from '../../models/contract';
 import {
   ContractFilters,
@@ -16,17 +19,19 @@ import { contractPdf, getContracts, signedDocument, uploadSigned } from '../../s
 
 @Component({
   selector: 'app-contract-list',
-  imports: [Shell, RouterLink, NgIcon],
+  imports: [Shell, RouterLink, NgIcon, EmptyState, Toast],
   providers: [contractIcons],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './contract-list.html',
   styleUrl: './contract-list.css',
 })
 export class ContractList {
-  private openFailedTimer: number | undefined;
-  private readonly showLatest =
-    inject(Router).getCurrentNavigation()?.extras.state?.['generated'] === true ||
-    (typeof history !== 'undefined' && history.state?.['generated'] === true);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly navState =
+    this.router.getCurrentNavigation()?.extras.state ??
+    (typeof history !== 'undefined' ? history.state : null);
+  private readonly initial = readContractListState(this.route.snapshot.queryParamMap);
   protected readonly pageSize = 8;
   protected readonly skeleton = [1, 2, 3, 4, 5, 6, 7, 8];
   protected readonly contracts = signal<ContractSummary[] | null>(null);
@@ -34,10 +39,10 @@ export class ContractList {
   protected readonly opening = signal('');
   protected readonly downloading = signal('');
   protected readonly uploading = signal('');
-  protected readonly openFailed = signal('');
-  protected readonly page = signal(1);
-  protected readonly filtersOpen = signal(false);
-  protected readonly filters = signal<ContractFilters>({ ...emptyContractFilters });
+  protected readonly toast = signal<{ message: string; tone: ToastTone } | null>(null);
+  protected readonly page = signal(this.initial.page);
+  protected readonly filters = signal<ContractFilters>({ ...this.initial.filters });
+  protected readonly filtersOpen = signal(Boolean(this.initial.filters.status || this.initial.filters.validity));
   protected readonly date = formatCalendarDate;
   protected readonly unreachable = unreachable;
 
@@ -65,46 +70,70 @@ export class ContractList {
     return Boolean(current.status || current.validity);
   });
 
+  protected listQuery(page = this.page()) {
+    return contractListQuery(page, this.filters());
+  }
+
   constructor() {
-    void this.load(this.showLatest);
+    const notice = this.navState?.['notice'];
+    if (typeof notice === 'string') this.showToast(notice, 'success');
+    void this.load();
   }
 
   protected toggleFilters() {
-    this.clearOpenFailed();
+    this.clearToast();
     this.filtersOpen.update((open) => !open);
   }
 
   protected setStatus(event: Event) {
-    this.clearOpenFailed();
+    this.clearToast();
     const value = (event.target as HTMLSelectElement).value as ContractStatusFilter;
     this.filters.update((current) => ({ ...current, status: value }));
-    void this.load();
+    void this.load({ resetPage: true });
   }
 
   protected setValidity(event: Event) {
-    this.clearOpenFailed();
+    this.clearToast();
     const value = (event.target as HTMLSelectElement).value as ContractValidityFilter;
     this.filters.update((current) => ({ ...current, validity: value }));
-    void this.load();
+    void this.load({ resetPage: true });
   }
 
   protected clearFilters() {
-    this.clearOpenFailed();
+    this.clearToast();
     this.filters.set({ ...emptyContractFilters });
-    void this.load();
+    void this.load({ resetPage: true });
   }
 
   protected go(next: number) {
     const page = Math.min(this.pageCount(), Math.max(1, next));
     if (page === this.page()) return;
-    this.page.set(page);
-    const heading = document.getElementById('contenido');
+    this.setPage(page);
+    const heading = document.querySelector('main.content')?.querySelector<HTMLElement>('h1');
     const scroller = heading?.closest('.content');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const behavior: ScrollBehavior = reduce ? 'auto' : 'smooth';
     if (scroller instanceof HTMLElement) scroller.scrollTo({ top: 0, behavior });
     else window.scrollTo({ top: 0, behavior });
     heading?.focus({ preventScroll: true });
+  }
+
+  private setPage(page: number, syncUrl = true) {
+    this.page.set(page);
+    if (!syncUrl) return;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: contractListQuery(page, this.filters()),
+      replaceUrl: true,
+    });
+  }
+
+  private syncFiltersUrl(page: number) {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: contractListQuery(page, this.filters()),
+      replaceUrl: true,
+    });
   }
 
   protected async upload(id: string, event: Event) {
@@ -114,16 +143,16 @@ export class ContractList {
     if (!file) return;
     const pdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (!pdf) {
-      this.setOpenFailed('Solo se aceptan archivos PDF.');
+      this.showToast('Solo se aceptan archivos PDF.', 'warning');
       return;
     }
     this.uploading.set(id);
-    this.clearOpenFailed();
+    this.clearToast();
     try {
       await uploadSigned(id, file);
       this.contracts.set(await getContracts(this.filters()));
     } catch (error) {
-      if (!isUnreachable(error)) this.setOpenFailed('No se pudo subir el documento firmado.');
+      if (!isUnreachable(error)) this.showToast('No se pudo subir el documento firmado.', 'danger');
     } finally {
       this.uploading.set('');
     }
@@ -132,7 +161,7 @@ export class ContractList {
   protected async download(id: string) {
     if (this.downloading()) return;
     this.downloading.set(id);
-    this.clearOpenFailed();
+    this.clearToast();
     try {
       const file = await contractPdf(id);
       const url = URL.createObjectURL(file);
@@ -145,7 +174,7 @@ export class ContractList {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      if (!isUnreachable(error)) this.setOpenFailed('No se pudo descargar el contrato.');
+      if (!isUnreachable(error)) this.showToast('No se pudo descargar el contrato.', 'danger');
     } finally {
       this.downloading.set('');
     }
@@ -154,11 +183,11 @@ export class ContractList {
   protected async openSigned(id: string) {
     const tab = window.open('', '_blank');
     if (!tab) {
-      this.setOpenFailed('El navegador bloqueó la ventana del documento.');
+      this.showToast('El navegador bloqueó la ventana del documento.', 'warning');
       return;
     }
     this.opening.set(id);
-    this.clearOpenFailed();
+    this.clearToast();
     try {
       const file = await signedDocument(id);
       const url = URL.createObjectURL(file);
@@ -166,33 +195,33 @@ export class ContractList {
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
       tab.close();
-      if (!isUnreachable(error)) this.setOpenFailed('No se pudo abrir el documento firmado.');
+      if (!isUnreachable(error)) this.showToast('No se pudo abrir el documento firmado.', 'danger');
     } finally {
       this.opening.set('');
     }
-
   }
 
-  private setOpenFailed(message: string) {
-    this.clearOpenFailed();
-    this.openFailed.set(message);
-    this.openFailedTimer = window.setTimeout(() => this.clearOpenFailed(), 5000);
+  protected clearToast() {
+    this.toast.set(null);
   }
 
-  private clearOpenFailed() {
-    if (this.openFailedTimer !== undefined) window.clearTimeout(this.openFailedTimer);
-    this.openFailedTimer = undefined;
-    this.openFailed.set('');
+  private showToast(message: string, tone: ToastTone) {
+    this.toast.set(null);
+    queueMicrotask(() => this.toast.set({ message, tone }));
   }
 
-  private async load(showLatest = false) {
+  private async load(options: { resetPage?: boolean } = {}) {
     this.failed.set(false);
     this.contracts.set(null);
-    this.page.set(1);
+    const page = options.resetPage ? 1 : this.page();
+    if (options.resetPage) this.page.set(1);
+    this.syncFiltersUrl(page);
     try {
       const list = await getContracts(this.filters());
       this.contracts.set(list);
-      if (showLatest) this.page.set(this.pageCount());
+      const pageCount = Math.max(1, Math.ceil(list.length / this.pageSize));
+      const clamped = Math.min(this.page(), pageCount);
+      if (clamped !== this.page()) this.setPage(clamped);
     } catch {
       this.failed.set(true);
     }

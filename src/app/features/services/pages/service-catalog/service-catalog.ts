@@ -1,7 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { NgIcon } from '@ng-icons/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucidePlus } from '@ng-icons/lucide';
 import { isUnreachable, unreachable } from '../../../../core/outage';
+import { EmptyState } from '../../../../shared/empty-state/empty-state';
+import { Toast, ToastTone } from '../../../../shared/toast/toast';
 import { Shell } from '../../../../shell/shell';
 import { planIcons } from '../../../plans/icons';
 import { ServiceType, SupportService } from '../../models/service-catalog';
@@ -16,36 +19,79 @@ import {
   updateSupportService,
 } from '../../services/service-api';
 
+/** Match `.catalog-fold::details-content` transition duration. */
+const CATALOG_FOLD_MS = 280;
+
 interface Feedback {
   type: 'success' | 'error';
   text: string;
 }
 
+type Removing =
+  | { kind: 'type'; item: ServiceType }
+  | { kind: 'service'; item: SupportService };
+
 @Component({
   selector: 'app-service-catalog',
-  imports: [Shell, RouterLink, NgIcon],
-  providers: [planIcons],
+  imports: [Shell, RouterLink, NgIcon, EmptyState, Toast],
+  providers: [planIcons, provideIcons({ lucidePlus })],
   templateUrl: './service-catalog.html',
   styleUrl: './service-catalog.css',
 })
 export class ServiceCatalog {
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly removeDialog = viewChild<ElementRef<HTMLDialogElement>>('removeDialog');
   private readonly timers = new Map<string, number>();
-
+  private catalogScrollRaf = 0;
+  protected readonly typeSkeleton = [1, 2, 3];
   protected readonly types = signal<ServiceType[] | null>(null);
   protected readonly services = signal<SupportService[] | null>(null);
   protected readonly failed = signal('');
   protected readonly saving = signal('');
+  protected readonly deleting = signal(false);
+  protected readonly removing = signal<Removing | null>(null);
   protected readonly createServiceTypeFeedback = signal<Feedback | null>(null);
   protected readonly createServiceFeedback = signal<Feedback | null>(null);
   protected readonly serviceTypeRowFeedback = signal<Record<number, Feedback>>({});
   protected readonly serviceRowFeedback = signal<Record<number, Feedback>>({});
-  protected readonly deleteServiceTypeFeedback = signal<Feedback | null>(null);
-  protected readonly deleteServiceFeedback = signal<Feedback | null>(null);
+  protected readonly toast = signal<{ message: string; tone: ToastTone } | null>(null);
   protected readonly unreachable = unreachable;
 
   constructor() {
+    this.destroyRef.onDestroy(() => cancelAnimationFrame(this.catalogScrollRaf));
     void this.load();
+  }
+
+  /** Ease scroll up with the collapsing fold above the one just opened. */
+  protected followCatalogScroll(event: Event) {
+    const details = event.currentTarget;
+    if (!(details instanceof HTMLDetailsElement) || !details.open) return;
+
+    const scroller = details.closest('.content');
+    const previous = details.previousElementSibling;
+    if (!(scroller instanceof HTMLElement) || !(previous instanceof HTMLDetailsElement)) return;
+
+    const collapse = foldBodyHeight(previous);
+    if (collapse < 1) return;
+
+    cancelAnimationFrame(this.catalogScrollRaf);
+    const from = scroller.scrollTop;
+    const to = Math.max(0, from - collapse);
+    if (Math.abs(to - from) < 1) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      scroller.scrollTop = to;
+      return;
+    }
+
+    const started = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / CATALOG_FOLD_MS);
+      scroller.scrollTop = from + (to - from) * easeInOut(t);
+      if (t < 1) this.catalogScrollRaf = requestAnimationFrame(tick);
+    };
+    this.catalogScrollRaf = requestAnimationFrame(tick);
   }
 
   protected async createType(event: Event, name: string) {
@@ -60,7 +106,7 @@ export class ServiceCatalog {
     try {
       await createServiceType({ name: name.trim() });
       form.reset();
-      this.setCreateType(successFeedback('Tipo de servicio creado correctamente.'));
+      this.showToast('Tipo de servicio creado.', 'success');
       await this.load();
     } catch (error) {
       this.setCreateType(await this.errorMessage(error, true, 'No se pudo crear el tipo de servicio.'));
@@ -79,7 +125,7 @@ export class ServiceCatalog {
     this.saving.set(`type-${type.id}`);
     try {
       await updateServiceType(type.id, { name: name.trim() });
-      this.setTypeRow(type.id, successFeedback('Tipo de servicio actualizado correctamente.'));
+      this.showToast('Tipo de servicio actualizado.', 'success');
       await this.load();
     } catch (error) {
       this.setTypeRow(
@@ -92,28 +138,12 @@ export class ServiceCatalog {
     }
   }
 
-  protected async removeType(type: ServiceType) {
-    if (this.saving()) return;
-    this.clearAllFeedback();
-    this.saving.set(`delete-type-${type.id}`);
-    try {
-      await deleteServiceType(type.id);
-      this.setDeleteType(successFeedback(`Tipo de servicio «${type.name}» eliminado correctamente.`));
-      await this.load();
-    } catch (error) {
-      this.setTypeRow(
-        type.id,
-        (await this.errorMessage(
-          error,
-          true,
-          'No se pudo eliminar el tipo de servicio.',
-          'No se puede eliminar este tipo de servicio porque está asignado a uno o más servicios.',
-          'Este tipo de servicio ya no existe.',
-        )) ?? errorFeedback('No se pudo eliminar el tipo de servicio.'),
-      );
-    } finally {
-      this.saving.set('');
-    }
+  protected askRemoveType(type: ServiceType) {
+    if (this.saving() || this.deleting()) return;
+    this.removing.set({ kind: 'type', item: type });
+    this.clearToast();
+    const dialog = this.removeDialog()?.nativeElement;
+    if (typeof dialog?.showModal === 'function') dialog.showModal();
   }
 
   protected async createService(event: Event, name: string, typeId: string, unit: string) {
@@ -131,7 +161,7 @@ export class ServiceCatalog {
     try {
       await createSupportService({ name: name.trim(), serviceTypeId: type, unit: unit.trim() || null });
       form.reset();
-      this.setCreateService(successFeedback('Servicio creado correctamente.'));
+      this.showToast('Servicio creado.', 'success');
       await this.load();
     } catch (error) {
       this.setCreateService(await this.errorMessage(error, false, 'No se pudo crear el servicio.'));
@@ -154,7 +184,7 @@ export class ServiceCatalog {
     this.saving.set(`service-${service.id}`);
     try {
       await updateSupportService(service.id, { name: name.trim(), serviceTypeId: type, unit: unit.trim() || null });
-      this.setServiceRow(service.id, successFeedback('Servicio actualizado correctamente.'));
+      this.showToast('Servicio actualizado.', 'success');
       await this.load();
     } catch (error) {
       this.setServiceRow(
@@ -167,27 +197,48 @@ export class ServiceCatalog {
     }
   }
 
-  protected async removeService(service: SupportService) {
-    if (this.saving()) return;
-    this.clearAllFeedback();
-    this.saving.set(`delete-service-${service.id}`);
+  protected askRemoveService(service: SupportService) {
+    if (this.saving() || this.deleting()) return;
+    this.removing.set({ kind: 'service', item: service });
+    this.clearToast();
+    const dialog = this.removeDialog()?.nativeElement;
+    if (typeof dialog?.showModal === 'function') dialog.showModal();
+  }
+
+  protected async confirmRemove() {
+    const target = this.removing();
+    if (!target || this.deleting()) return;
+    this.clearToast();
+    this.deleting.set(true);
     try {
-      await deleteSupportService(service.id);
-      this.setDeleteService(successFeedback(`Servicio «${service.name}» eliminado correctamente.`));
+      if (target.kind === 'type') {
+        await deleteServiceType(target.item.id);
+        this.showToast(`Tipo de servicio «${target.item.name}» eliminado.`, 'success');
+      } else {
+        await deleteSupportService(target.item.id);
+        this.showToast(`Servicio «${target.item.name}» eliminado.`, 'success');
+      }
       await this.load();
     } catch (error) {
-      this.setServiceRow(
-        service.id,
-        (await this.errorMessage(
-          error,
-          false,
-          'No se pudo eliminar el servicio.',
-          'No se puede eliminar este servicio porque está asociado a un plan.',
-          'Este servicio ya no existe.',
-        )) ?? errorFeedback('No se pudo eliminar el servicio.'),
-      );
+      const message =
+        target.kind === 'type'
+          ? await this.toastMessage(
+              error,
+              'No se pudo eliminar el tipo de servicio.',
+              'Este tipo está asignado a uno o más servicios.',
+              'Este tipo de servicio ya no existe.',
+            )
+          : await this.toastMessage(
+              error,
+              'No se pudo eliminar el servicio.',
+              'Este servicio está asociado a un plan.',
+              'Este servicio ya no existe.',
+            );
+      if (message) this.showToast(message.text, message.tone);
     } finally {
-      this.saving.set('');
+      this.deleting.set(false);
+      this.removing.set(null);
+      this.removeDialog()?.nativeElement.close();
     }
   }
 
@@ -215,12 +266,13 @@ export class ServiceCatalog {
     return this.serviceRowFeedback()[id];
   }
 
-  protected closeDeleteTypeFeedback() {
-    this.clearScope('delete-type');
+  protected clearToast() {
+    this.toast.set(null);
   }
 
-  protected closeDeleteServiceFeedback() {
-    this.clearScope('delete-service');
+  private showToast(message: string, tone: ToastTone) {
+    this.toast.set(null);
+    queueMicrotask(() => this.toast.set({ message, tone }));
   }
 
   private setCreateType(feedback: Feedback | null) {
@@ -229,14 +281,6 @@ export class ServiceCatalog {
 
   private setCreateService(feedback: Feedback | null) {
     this.setTimed('create-service', feedback, this.createServiceFeedback);
-  }
-
-  private setDeleteType(feedback: Feedback | null) {
-    this.setTimed('delete-type', feedback, this.deleteServiceTypeFeedback);
-  }
-
-  private setDeleteService(feedback: Feedback | null) {
-    this.setTimed('delete-service', feedback, this.deleteServiceFeedback);
   }
 
   private setTypeRow(id: number, feedback: Feedback | null) {
@@ -275,8 +319,6 @@ export class ServiceCatalog {
     }
     if (scope === 'create-type') this.createServiceTypeFeedback.set(null);
     else if (scope === 'create-service') this.createServiceFeedback.set(null);
-    else if (scope === 'delete-type') this.deleteServiceTypeFeedback.set(null);
-    else if (scope === 'delete-service') this.deleteServiceFeedback.set(null);
     else if (scope.startsWith('type-')) {
       const id = Number(scope.slice(5));
       this.serviceTypeRowFeedback.update((current) => withoutFeedback(current, id));
@@ -292,8 +334,7 @@ export class ServiceCatalog {
     this.createServiceFeedback.set(null);
     this.serviceTypeRowFeedback.set({});
     this.serviceRowFeedback.set({});
-    this.deleteServiceTypeFeedback.set(null);
-    this.deleteServiceFeedback.set(null);
+    this.clearToast();
   }
 
   private async load() {
@@ -328,10 +369,23 @@ export class ServiceCatalog {
     if (status === 404) return errorFeedback(notFound ?? 'No se encontró el tipo o servicio seleccionado.');
     return errorFeedback(fallback);
   }
-}
 
-function successFeedback(text: string): Feedback {
-  return { type: 'success', text };
+  private async toastMessage(
+    error: unknown,
+    fallback: string,
+    conflict: string,
+    notFound: string,
+  ): Promise<{ text: string; tone: ToastTone } | null> {
+    const status = errorStatus(error);
+    if (status === 401) {
+      await this.router.navigateByUrl('/login');
+      return null;
+    }
+    if (isUnreachable(error)) return null;
+    if (status === 409) return { text: conflict, tone: 'warning' };
+    if (status === 404) return { text: notFound, tone: 'warning' };
+    return { text: fallback, tone: 'danger' };
+  }
 }
 
 function errorFeedback(text: string): Feedback {
@@ -351,4 +405,22 @@ function errorStatus(error: unknown): number {
 
 function sortByName<T extends { name: string }>(items: T[]): T[] {
   return [...items].sort((left, right) => left.name.localeCompare(right.name, 'es', { sensitivity: 'base' }));
+}
+
+function foldBodyHeight(details: HTMLDetailsElement): number {
+  let height = 0;
+  for (const child of details.children) {
+    if (!(child instanceof HTMLElement) || child.localName === 'summary') continue;
+    const style = getComputedStyle(child);
+    height +=
+      child.getBoundingClientRect().height +
+      (Number.parseFloat(style.marginBlockStart) || 0) +
+      (Number.parseFloat(style.marginBlockEnd) || 0);
+  }
+  return height;
+}
+
+/** Same curve as CSS `ease-in-out`. */
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 }

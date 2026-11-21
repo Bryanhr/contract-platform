@@ -4,6 +4,8 @@ import {
   lucideFileText,
   lucideHouse,
   lucideLayers,
+  lucideScrollText,
+  lucideWrench,
 } from '@ng-icons/lucide';
 
 export const shellIcons = provideIcons({
@@ -11,4 +13,6 @@ export const shellIcons = provideIcons({
   lucideFileText,
   lucideHouse,
   lucideLayers,
+  lucideScrollText,
+  lucideWrench,
 });

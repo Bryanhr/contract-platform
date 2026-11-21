@@ -36,7 +36,7 @@ function expand(parts: Piece[]): Piece[] {
     if (part.name === 'contacto') {
       return [
         { kind: 'text', value: ' Domicilio: ' },
-        { kind: 'slot', name: 'domicilio' },
+        { kind: 'slot', name: 'direccion' },
         { kind: 'text', value: '. Correo: ' },
         { kind: 'slot', name: 'correo' },
         { kind: 'text', value: '. Teléfono: ' },

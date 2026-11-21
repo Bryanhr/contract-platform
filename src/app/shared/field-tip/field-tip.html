@@ -1,0 +1,20 @@
+<button
+  type="button"
+  class="tip-trigger"
+  [attr.interestfor]="tipId()"
+  [attr.popovertarget]="tipId()"
+  popovertargetaction="show"
+  [attr.aria-expanded]="open()"
+  [attr.aria-label]="label()"
+>
+  <ng-icon name="lucideCircleHelp" aria-hidden="true" />
+</button>
+<div
+  class="tip"
+  [id]="tipId()"
+  popover="hint"
+  role="tooltip"
+  (toggle)="onToggle($event)"
+>
+  {{ text() }}
+</div>

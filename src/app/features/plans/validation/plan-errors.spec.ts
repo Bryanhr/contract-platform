@@ -1,5 +1,5 @@
 import { PlanDraft } from '../models/plan-draft';
-import { apiFieldErrors, planErrors, problemDetail } from './plan-errors';
+import { apiFieldErrors, planErrors, planServiceFieldErrors, problemDetail } from './plan-errors';
 
 const valid: PlanDraft = {
   name: 'Soporte estándar',
@@ -23,10 +23,10 @@ describe('planErrors', () => {
         durationMonths: '0',
       }),
     ).toEqual({
-      name: 'Escribe el nombre del plan.',
-      responseTimeHours: 'El tiempo de respuesta debe ser un entero mayor que 0.',
-      monthlyCost: 'El costo mensual debe ser mayor que 0, tener hasta 8 cifras enteras y máximo 2 decimales.',
-      durationMonths: 'La duración debe ser un entero de al menos 1 mes.',
+      name: 'Escribe el nombre.',
+      responseTimeHours: 'Usa un entero mayor que 0.',
+      monthlyCost: 'Usa un monto mayor que 0 (máx. 2 decimales).',
+      durationMonths: 'Usa un entero de al menos 1.',
     });
   });
 
@@ -36,6 +36,23 @@ describe('planErrors', () => {
 
   it('rejects monthly costs with more than eight integer digits', () => {
     expect(planErrors({ ...valid, monthlyCost: '123456789.10' }).monthlyCost).toBeDefined();
+  });
+});
+
+describe('planServiceFieldErrors', () => {
+  it('accepts valid limit and extra cost', () => {
+    expect(planServiceFieldErrors('10', '1.5')).toEqual({});
+  });
+
+  it('rejects empty or invalid service values', () => {
+    expect(planServiceFieldErrors('', '')).toEqual({
+      monthlyLimit: 'Escribe el límite.',
+      extraCost: 'Escribe el costo.',
+    });
+    expect(planServiceFieldErrors('1.5', '10.123')).toEqual({
+      monthlyLimit: 'Usa un entero ≥ 0.',
+      extraCost: 'Usa un monto ≥ 0 (2 dec.).',
+    });
   });
 });
 
@@ -51,8 +68,8 @@ describe('backend validation errors', () => {
 
     expect(problemDetail(error)).toBe('Validation failed');
     expect(apiFieldErrors(error)).toEqual({
-      name: 'Escribe el nombre del plan.',
-      monthlyCost: 'El costo mensual debe ser mayor que 0, tener hasta 8 cifras enteras y máximo 2 decimales.',
+      name: 'Escribe el nombre.',
+      monthlyCost: 'Usa un monto mayor que 0 (máx. 2 decimales).',
     });
   });
 });

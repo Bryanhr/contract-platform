@@ -5,7 +5,7 @@
   </a>
 
   <div class="head">
-    <h1 id="contenido" tabindex="-1">Contratos</h1>
+    <h1 tabindex="-1">Contratos</h1>
     <div class="actions">
       <button
         type="button"
@@ -61,7 +61,7 @@
         </select>
       </div>
       @if (filtering()) {
-        <button type="button" class="clear" (click)="clearFilters()">Quitar filtros</button>
+        <button type="button" class="text-remove" (click)="clearFilters()">Quitar filtros</button>
       }
     </div>
   }
@@ -71,11 +71,12 @@
       <p class="lead">No se pudieron cargar los contratos.</p>
     }
   } @else if (contracts(); as contracts) {
-    @if (openFailed()) {
-      <p class="notice" role="alert">{{ openFailed() }}</p>
-    }
     @if (contracts.length === 0) {
-      <p class="lead">{{ filtering() ? 'No hay contratos con esos filtros.' : 'Todavía no hay contratos.' }}</p>
+      @if (filtering()) {
+        <app-empty-state tone="search" icon="lucideFilterX" message="No se encontró nada con esos filtros." />
+      } @else {
+        <app-empty-state icon="lucideFileSignature" message="Todavía no hay contratos." />
+      }
     } @else {
       <ul class="register">
         @for (contract of visible(); track contract.id) {
@@ -96,8 +97,13 @@
                 }
               </div>
               <footer class="entry-actions">
-                <a class="revise" [routerLink]="['/contracts', contract.id]">
-                  Detalle
+                <a
+                  class="detail"
+                  [routerLink]="['/contracts', contract.id]"
+                  [queryParams]="listQuery()"
+                >
+                  <ng-icon name="lucideEye" class="action-icon" aria-hidden="true" />
+                  Ver detalle
                   <span class="visually-hidden"> del contrato de {{ contract.cliente }}</span>
                 </a>
                 @if (contract.firmado) {
@@ -108,7 +114,11 @@
                     </button>
                   </div>
                 } @else {
-                  <a class="revise" [routerLink]="['/contracts', contract.id, 'edit']">
+                  <a
+                    class="revise"
+                    [routerLink]="['/contracts', contract.id, 'edit']"
+                    [queryParams]="listQuery()"
+                  >
                     Editar
                     <span class="visually-hidden"> contrato de {{ contract.cliente }}</span>
                   </a>
@@ -200,5 +210,9 @@
       }
     </ul>
     <p class="visually-hidden">Cargando contratos.</p>
+  }
+
+  @if (toast(); as alert) {
+    <app-toast [message]="alert.message" [tone]="alert.tone" (dismissed)="clearToast()" />
   }
 </app-shell>

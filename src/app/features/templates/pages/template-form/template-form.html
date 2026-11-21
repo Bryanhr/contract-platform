@@ -1,0 +1,283 @@
+<app-shell current="plantillas">
+  <a class="back" routerLink="/templates" [queryParams]="listQuery">
+    <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
+    Volver a plantillas
+  </a>
+
+  <header class="intro">
+    <h1 tabindex="-1">{{ editing ? 'Editar plantilla' : 'Nueva plantilla' }}</h1>
+    <p class="lead">
+      {{ editing ? 'Cambia el texto que saldrá en el contrato.' : 'Escribe el texto que saldrá en el contrato de este plan.' }}
+    </p>
+  </header>
+
+  @if (failed()) {
+    @if (!unreachable()) {
+      <app-empty-state
+        tone="alert"
+        icon="lucideCircleAlert"
+        message="No se pudo cargar la plantilla."
+      />
+    }
+  } @else if (loading()) {
+    <div class="loading">
+      <progress class="loading-spinner" aria-label="Cargando plantilla"></progress>
+    </div>
+  } @else {
+    <form class="sheet" novalidate (submit)="save($event)">
+      <fieldset class="block">
+        <legend>Datos</legend>
+        <div class="fields">
+          <div class="field stretch">
+            <label for="template-name">Nombre</label>
+            <input
+              id="template-name"
+              name="name"
+              required
+              autocomplete="off"
+              [value]="name()"
+              [attr.aria-invalid]="error('name') ? 'true' : null"
+              [attr.aria-describedby]="error('name') ? 'template-name-error' : null"
+              (input)="setName($event)"
+            />
+            <p id="template-name-error" class="field-error">
+              @if (error('name'); as msg) {
+                <span class="error-text">{{ msg }}</span>
+              }
+            </p>
+          </div>
+          <div class="field stretch">
+            <label for="template-plan">Plan</label>
+            <select
+              id="template-plan"
+              name="planId"
+              class="choice choice-blank"
+              required
+              [value]="planId()"
+              [disabled]="editing"
+              [attr.aria-invalid]="error('planId') ? 'true' : null"
+              [attr.aria-describedby]="error('planId') ? 'template-plan-error' : null"
+              (change)="setPlan($event)"
+            >
+              @if (!editing) {
+                <option value="" [selected]="!planId()">Selecciona un plan</option>
+              }
+              @for (plan of plans() ?? []; track plan.id) {
+                <option [value]="'' + plan.id" [selected]="planId() === '' + plan.id">
+                  {{ plan.name }}
+                </option>
+              }
+            </select>
+            <p id="template-plan-error" class="field-error">
+              @if (error('planId'); as msg) {
+                <span class="error-text">{{ msg }}</span>
+              }
+            </p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="block">
+        <legend>Qué vas a escribir</legend>
+        <div class="mode-row" role="radiogroup" aria-label="Qué vas a escribir">
+          <label class="mode-option">
+            <input
+              type="radio"
+              name="content-mode"
+              value="full"
+              [checked]="mode() === 'full'"
+              (change)="setMode('full')"
+            />
+            <span>
+              <strong>Todo el contrato</strong>
+              <span class="mode-desc">Escribes el documento completo, de arriba abajo.</span>
+            </span>
+          </label>
+          <label class="mode-option">
+            <input
+              type="radio"
+              name="content-mode"
+              value="clause"
+              [checked]="mode() === 'clause'"
+              (change)="setMode('clause')"
+            />
+            <span>
+              <strong>Solo un párrafo extra</strong>
+              <span class="mode-desc">El resto del contrato ya está listo; solo sumas este texto.</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="block">
+        <legend>Texto del contrato</legend>
+        <p class="hint">
+          @if (mode() === 'full') {
+            Arma el contrato con títulos y párrafos. Con «Insertar dato» puedes poner el nombre de la empresa, fechas u otros datos que se completan solos.
+          } @else {
+            Escribe el párrafo que quieres agregar.
+          }
+        </p>
+
+        <div class="editor-toolbar">
+          <button type="button" class="tool" (click)="addBlock('title')">Nuevo título</button>
+          <button type="button" class="tool" (click)="addBlock('heading')">Nueva sección</button>
+          <button type="button" class="tool" (click)="addBlock('paragraph')">Nuevo párrafo</button>
+        </div>
+
+        <ul class="editor-blocks">
+          @for (block of blocks(); track block.id; let index = $index) {
+            <li class="editor-block">
+              <div class="block-bar">
+                <label class="visually-hidden" [for]="'kind-' + block.id">Tipo de parte</label>
+                <select
+                  class="choice kind"
+                  [id]="'kind-' + block.id"
+                  [value]="block.kind"
+                  (change)="setBlockKind(block.id, $event)"
+                >
+                  <option value="title" [selected]="block.kind === 'title'">Título</option>
+                  <option value="heading" [selected]="block.kind === 'heading'">Sección</option>
+                  <option value="paragraph" [selected]="block.kind === 'paragraph'">Párrafo</option>
+                </select>
+                <div class="block-moves">
+                  <button type="button" class="ghost" [disabled]="index === 0" (click)="moveBlock(block.id, -1)">
+                    Subir
+                  </button>
+                  <button
+                    type="button"
+                    class="ghost"
+                    [disabled]="index === blocks().length - 1"
+                    (click)="moveBlock(block.id, 1)"
+                  >
+                    Bajar
+                  </button>
+                  <button
+                    type="button"
+                    class="ghost danger"
+                    [disabled]="blocks().length <= 1"
+                    (click)="removeBlock(block.id)"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              </div>
+
+              <div class="pieces" [attr.data-kind]="block.kind">
+                @for (piece of block.pieces; track $index; let pieceIndex = $index) {
+                  @if (piece.kind === 'text') {
+                    <textarea
+                      class="piece-text"
+                      rows="1"
+                      [attr.aria-label]="'Texto de la parte ' + (index + 1)"
+                      [value]="piece.value"
+                      (input)="setTextPiece(block.id, pieceIndex, $event)"
+                    ></textarea>
+                  } @else {
+                    <span class="field-chip">
+                      {{ fieldLabel(piece.name) }}
+                      <button
+                        type="button"
+                        class="chip-remove"
+                        (click)="removePiece(block.id, pieceIndex)"
+                        [attr.aria-label]="'Quitar ' + fieldLabel(piece.name)"
+                      >
+                        <ng-icon name="lucideX" aria-hidden="true" />
+                      </button>
+                    </span>
+                  }
+                }
+              </div>
+
+              <div class="piece-actions">
+                <button type="button" class="ghost" (click)="addTextPiece(block.id)">Más texto</button>
+                <button
+                  type="button"
+                  class="ghost accent"
+                  [attr.aria-expanded]="pickerFor() === block.id"
+                  (click)="openFieldPicker(block.id)"
+                >
+                  Insertar dato
+                </button>
+              </div>
+
+              @if (pickerFor() === block.id) {
+                <div class="field-picker" role="listbox" aria-label="Datos que se completan solos">
+                  @for (field of fields; track field.name) {
+                    <button type="button" role="option" (click)="insertField(block.id, field.name)">
+                      {{ field.label }}
+                    </button>
+                  }
+                </div>
+              }
+            </li>
+          }
+        </ul>
+
+        <p class="field-error">
+          @if (error('content'); as msg) {
+            <span class="error-text">{{ msg }}</span>
+          }
+        </p>
+      </fieldset>
+
+      <section class="block preview" aria-labelledby="preview-title">
+        <h2 id="preview-title">Así se verá</h2>
+        <div class="preview-doc">
+          @for (block of preview(); track $index) {
+            @if (block.kind === 'title') {
+              <h3 class="preview-title">
+                @for (piece of block.pieces; track $index) {
+                  @if (piece.kind === 'text') {
+                    {{ piece.value }}
+                  } @else {
+                    <span class="preview-slot">{{ fieldLabel(piece.name) }}</span>
+                  }
+                }
+              </h3>
+            } @else if (block.kind === 'heading') {
+              <h4 class="preview-heading">
+                @for (piece of block.pieces; track $index) {
+                  @if (piece.kind === 'text') {
+                    {{ piece.value }}
+                  } @else {
+                    <span class="preview-slot">{{ fieldLabel(piece.name) }}</span>
+                  }
+                }
+              </h4>
+            } @else {
+              <p class="preview-paragraph">
+                @for (piece of block.pieces; track $index) {
+                  @if (piece.kind === 'text') {
+                    {{ piece.value }}
+                  } @else {
+                    <span class="preview-slot">{{ fieldLabel(piece.name) }}</span>
+                  }
+                }
+              </p>
+            }
+          } @empty {
+            <p class="hint">Cuando escribas, aquí verás el resultado.</p>
+          }
+        </div>
+      </section>
+
+      <p class="form-error" role="alert">
+        @if (failure(); as msg) {
+          <span class="error-text">{{ msg }}</span>
+        }
+      </p>
+
+      <div class="actions">
+        <button class="submit" type="submit" [disabled]="saving()" [attr.aria-busy]="saving() ? 'true' : null">
+          @if (saving()) {
+            <progress class="loading-spinner" aria-label="Guardando plantilla"></progress>
+            <span aria-hidden="true">Guardando…</span>
+          } @else {
+            {{ editing ? 'Guardar cambios' : 'Crear plantilla' }}
+          }
+        </button>
+      </div>
+    </form>
+  }
+</app-shell>

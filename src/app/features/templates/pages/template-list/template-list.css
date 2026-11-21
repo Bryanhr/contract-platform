@@ -1,0 +1,276 @@
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+
+h1 {
+  margin: 0;
+  scroll-margin-top: 1rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+}
+
+.make,
+.revise,
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.make {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.make:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--on-accent));
+}
+
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 24rem;
+  margin-top: 1.1rem;
+}
+
+.search label {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--control);
+}
+
+.search-box:focus-within {
+  border-bottom-color: var(--accent);
+}
+
+.search-box ng-icon {
+  --ng-icon__size: 1.1rem;
+  flex: none;
+  color: var(--muted);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: max(1rem, 1em);
+}
+
+.search input:focus-visible {
+  outline: none;
+}
+
+.lead {
+  max-width: 36rem;
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.register {
+  margin: 1.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 2px solid var(--rail);
+}
+
+.entry {
+  display: grid;
+  row-gap: 0.85rem;
+  padding: 1rem 0 0;
+  border-bottom: 2px solid var(--rail);
+}
+
+.who {
+  min-width: 0;
+  padding-inline: 0.1rem;
+  overflow-wrap: anywhere;
+}
+
+.who h2 {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.who p {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--control) 70%, transparent);
+  background: color-mix(in srgb, var(--rail) 7%, var(--panel));
+}
+
+.revise {
+  background: var(--rail);
+  color: var(--rail-ink);
+}
+
+.revise:hover {
+  background: color-mix(in srgb, var(--rail) 82%, var(--accent));
+}
+
+.remove {
+  border-color: var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+
+.remove:hover {
+  background: var(--danger-bg);
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1.15rem;
+}
+
+.page-where {
+  margin: 0;
+  font-weight: 700;
+}
+
+.pages,
+.pages ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pages button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--rail);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pages button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.pages button[aria-current='page'] {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.pages button:disabled {
+  border-color: var(--control);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.skeleton {
+  display: block;
+  background: color-mix(in srgb, var(--control) 32%, var(--floor));
+}
+
+.skeleton.name {
+  width: min(16rem, 72%);
+  height: 1.35rem;
+}
+
+.skeleton.line {
+  width: min(12rem, 58%);
+  height: 0.75rem;
+  margin-top: 0.45rem;
+}
+
+.skeleton.short {
+  width: min(8rem, 42%);
+}
+
+.skeleton.mid {
+  width: min(10rem, 50%);
+}
+
+.skeleton.action {
+  width: 5.5rem;
+  height: 2.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (forced-colors: active) {
+  .make,
+  .revise,
+  .remove,
+  .pages button {
+    border: 1px solid ButtonText;
+    background: Canvas;
+    color: ButtonText;
+  }
+
+  .pages button[aria-current='page'] {
+    border-width: 3px;
+  }
+
+  .skeleton {
+    background: GrayText;
+    forced-color-adjust: none;
+  }
+}

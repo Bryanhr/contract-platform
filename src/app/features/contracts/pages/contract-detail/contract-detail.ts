@@ -2,11 +2,13 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from '@angular/core
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
 import { isUnreachable } from '../../../../core/outage';
+import { EmptyState } from '../../../../shared/empty-state/empty-state';
 import { Shell } from '../../../../shell/shell';
 import { contractIcons } from '../../icons';
 import { formatCalendarDate } from '../../format/calendar';
 import { serviceLine } from '../../format/service-line';
 import { soles } from '../../format/soles';
+import { contractListQuery, readContractListState } from '../../list-query';
 import { ContractResponse } from '../../models/contract-response';
 import { PlanService } from '../../models/plan-service';
 import { getContract } from '../../services/contract-api';
@@ -15,7 +17,7 @@ import { apiErrorStatus } from '../../../plans/validation/plan-errors';
 
 @Component({
   selector: 'app-contract-detail',
-  imports: [Shell, RouterLink, NgIcon],
+  imports: [Shell, RouterLink, NgIcon, EmptyState],
   providers: [contractIcons],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './contract-detail.html',
@@ -24,6 +26,8 @@ import { apiErrorStatus } from '../../../plans/validation/plan-errors';
 export class ContractDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly listState = readContractListState(this.route.snapshot.queryParamMap);
+  protected readonly listQuery = contractListQuery(this.listState.page, this.listState.filters);
 
   protected readonly contract = signal<ContractResponse | null>(null);
   protected readonly services = signal<PlanService[]>([]);

@@ -1,46 +1,89 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, signal } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { Shell } from '../../../../shell/shell';
+import { getContracts } from '../../../contracts/services/contract-api';
+import { getCustomers } from '../../../customers/services/customer-api';
+import { getPlans } from '../../../plans/services/plan-api';
+import { getSupportServices } from '../../../services/services/service-api';
+import { getTemplates } from '../../../templates/services/template-api';
 import { homeIcons } from '../../icons';
-import { HomeModule } from '../../models/module';
+import { HomeGuide, HomeStat } from '../../models/module';
 
 @Component({
   selector: 'app-home',
-  imports: [Shell, RouterLink, NgIcon],
+  imports: [Shell, NgIcon],
   providers: [homeIcons],
   templateUrl: './home.html',
   styleUrl: './home.css',
 })
 export class Home {
-  protected readonly modules: HomeModule[] = [
+  protected readonly loading = signal(true);
+  protected readonly stats = signal<HomeStat[]>([
+    { id: 'clients', icon: 'lucideBuilding2', label: 'Clientes', value: null },
+    { id: 'services', icon: 'lucideWrench', label: 'Servicios', value: null },
+    { id: 'plans', icon: 'lucideLayers', label: 'Planes', value: null },
+    { id: 'templates', icon: 'lucideScrollText', label: 'Plantillas', value: null },
+    { id: 'contracts', icon: 'lucideFileText', label: 'Contratos', value: null },
+  ]);
+
+  protected readonly guides: HomeGuide[] = [
     {
       id: 'clients',
       icon: 'lucideBuilding2',
       name: 'Clientes',
-      path: '/customers',
-      summary: 'Empresas atendidas, contactos y el estado de cada cuenta.',
+      summary: 'Guarda las empresas para usarlas en los contratos.',
+      needs: ['Razón social y RUC', 'Representante o correo'],
+    },
+    {
+      id: 'services',
+      icon: 'lucideWrench',
+      name: 'Servicios',
+      summary: 'Lista lo que se puede incluir en un plan.',
+      needs: ['Agruparlos por tipo', 'Agregar cada servicio'],
     },
     {
       id: 'plans',
       icon: 'lucideLayers',
       name: 'Planes',
-      path: '/plans',
-      summary: 'Servicios IT, alcance, vigencia y precio de cada oferta.',
+      summary: 'Define cuánto cuesta y por cuánto tiempo.',
+      needs: ['Precio y duración', 'Servicios que incluye'],
     },
     {
-      id: 'services',
-      icon: 'lucideLayers',
-      name: 'Servicios',
-      path: '/services',
-      summary: 'Tipos de servicio y servicios disponibles para los planes.',
+      id: 'templates',
+      icon: 'lucideScrollText',
+      name: 'Plantillas',
+      summary: 'Prepara el texto del contrato de cada plan.',
+      needs: ['Tener el plan listo', 'Solo una plantilla por plan'],
     },
     {
-      id: 'contratos',
+      id: 'contracts',
       icon: 'lucideFileText',
       name: 'Contratos',
-      path: '/contracts',
-      summary: 'El vínculo vigente entre un cliente y el plan que contrató.',
+      summary: 'Genera el documento para firmar con el cliente.',
+      needs: ['Tener al cliente cargado', 'Tener plan con plantilla'],
     },
   ];
+
+  constructor() {
+    void this.loadCounts();
+  }
+
+  private async loadCounts() {
+    const [customers, services, plans, templates, contracts] = await Promise.all([
+      getCustomers().then((list) => list.length).catch(() => null),
+      getSupportServices().then((list) => list.length).catch(() => null),
+      getPlans().then((list) => list.length).catch(() => null),
+      getTemplates().then((list) => list.length).catch(() => null),
+      getContracts().then((list) => list.length).catch(() => null),
+    ]);
+
+    this.stats.set([
+      { id: 'clients', icon: 'lucideBuilding2', label: 'Clientes', value: customers },
+      { id: 'services', icon: 'lucideWrench', label: 'Servicios', value: services },
+      { id: 'plans', icon: 'lucideLayers', label: 'Planes', value: plans },
+      { id: 'templates', icon: 'lucideScrollText', label: 'Plantillas', value: templates },
+      { id: 'contracts', icon: 'lucideFileText', label: 'Contratos', value: contracts },
+    ]);
+    this.loading.set(false);
+  }
 }

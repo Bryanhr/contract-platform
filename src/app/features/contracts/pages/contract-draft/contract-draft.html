@@ -1,15 +1,23 @@
 <app-shell current="contratos">
-  <a class="back" [routerLink]="editing() ? '/contracts' : '/contracts/new'">
+  <a
+    class="back"
+    [routerLink]="editing() ? '/contracts' : '/contracts/new'"
+    [queryParams]="editing() ? listQuery : {}"
+  >
     <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
     {{ editing() ? 'Volver a contratos' : 'Volver a plantillas' }}
   </a>
   @if (failed()) {
-    <h1 id="contenido" tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
+    <h1 tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
     @if (!unreachable()) {
-      <p class="using">{{ editing() ? 'No se pudo cargar el contrato.' : 'No se pudo cargar la plantilla.' }}</p>
+      <app-empty-state
+        tone="alert"
+        icon="lucideCircleAlert"
+        [message]="editing() ? 'No se pudo cargar el contrato.' : 'No se pudo cargar la plantilla.'"
+      />
     }
   } @else if (template(); as template) {
-  <h1 id="contenido" tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
+  <h1 tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
   <p class="using">
     <span>{{ template.name }}</span>
     @if (!editing()) {
@@ -133,7 +141,11 @@
         </div>
       </details>
       </div>
-      <p id="generar-error" class="form-error" [class.shown]="!!failure()">{{ failure() }}</p>
+      <p id="generar-error" class="form-error" [class.shown]="!!failure()">
+        @if (failure(); as msg) {
+          <span class="error-text">{{ msg }}</span>
+        }
+      </p>
       <button class="generate" type="submit" [disabled]="generating()" [attr.aria-busy]="generating() ? 'true' : null">
         @if (generating()) {
           <progress
@@ -206,7 +218,7 @@
   }
   @else {
     <div class="loading">
-      <h1 id="contenido" tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
+      <h1 tabindex="-1">{{ editing() ? 'Editar contrato' : 'Generar contrato' }}</h1>
       <progress
         class="loading-spinner"
         [attr.aria-label]="editing() ? 'Cargando contrato' : 'Cargando plantilla'"

@@ -5,7 +5,7 @@
   </a>
 
   <div class="head">
-    <h1 id="contenido" tabindex="-1">Planes</h1>
+    <h1 tabindex="-1">Planes</h1>
     <a class="make" routerLink="/plans/new">Nuevo plan</a>
   </div>
 
@@ -13,33 +13,35 @@
     @if (!unreachable()) {
       <p class="lead">{{ failed() }}</p>
     }
-  } @else if (plans(); as plans) {
-    @if (plans.length === 0) {
-      <p class="lead">Todavía no hay planes.</p>
-    } @else {
-      <div class="search">
-        <label for="buscar">Buscar por nombre</label>
-        <div class="search-box">
-          <ng-icon name="lucideSearch" aria-hidden="true" />
-          <input
-            id="buscar"
-            #searchInput
-            type="search"
-            autocomplete="off"
-            spellcheck="false"
-            enterkeyhint="search"
-            [value]="query()"
-            (input)="search($event)"
-          />
-        </div>
+  } @else if (plans()?.length === 0) {
+    <app-empty-state icon="lucideClipboardList" message="Todavía no hay planes." />
+  } @else {
+    <div class="search">
+      <label for="buscar">Buscar por nombre</label>
+      <div class="search-box">
+        <ng-icon name="lucideSearch" aria-hidden="true" />
+        <input
+          id="buscar"
+          #searchInput
+          type="search"
+          autocomplete="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          [value]="query()"
+          [disabled]="plans() === null"
+          (input)="search($event)"
+        />
+        @if (query()) {
+          <button type="button" class="search-clear" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+            <ng-icon name="lucideX" aria-hidden="true" />
+          </button>
+        }
       </div>
+    </div>
 
-      @if (notice()) {
-        <p class="notice" role="alert">{{ notice() }}</p>
-      }
-
+    @if (plans(); as plans) {
       @if (matches().length === 0) {
-        <p class="lead">Ningún plan coincide con «{{ query() }}».</p>
+        <app-empty-state tone="search" icon="lucideFileSearch" [message]="noSearchResults(query())" />
       } @else {
         <ul class="register">
           @for (plan of visible(); track plan.id) {
@@ -52,7 +54,11 @@
                   <p>Duración: {{ plan.durationMonths }} {{ plan.durationMonths === 1 ? 'mes' : 'meses' }}</p>
                 </div>
                 <footer class="entry-actions">
-                  <a class="revise" [routerLink]="['/plans', plan.id, 'edit']">
+                  <a
+                    class="revise"
+                    [routerLink]="['/plans', plan.id, 'edit']"
+                    [queryParams]="listPageQuery(page())"
+                  >
                     Editar<span class="visually-hidden"> {{ plan.name }}</span>
                   </a>
                   <button type="button" class="remove" (click)="askRemove(plan)">
@@ -87,9 +93,27 @@
           </div>
         }
       }
+    } @else {
+      <ul class="register" aria-busy="true">
+        @for (row of skeleton; track row) {
+          <li>
+            <article class="entry" aria-hidden="true">
+              <div class="who">
+                <span class="skeleton name"></span>
+                <span class="skeleton line"></span>
+                <span class="skeleton line short"></span>
+                <span class="skeleton line mid"></span>
+              </div>
+              <footer class="entry-actions">
+                <span class="skeleton action"></span>
+                <span class="skeleton action"></span>
+              </footer>
+            </article>
+          </li>
+        }
+      </ul>
+      <p class="visually-hidden">Cargando planes.</p>
     }
-  } @else {
-    <progress class="loading-spinner" aria-label="Cargando planes"></progress>
   }
 
   <dialog #removeDialog class="confirm" closedby="any" aria-labelledby="remove-title">
@@ -102,4 +126,8 @@
       </button>
     </form>
   </dialog>
+
+  @if (toast(); as alert) {
+    <app-toast [message]="alert.message" [tone]="alert.tone" (dismissed)="clearToast()" />
+  }
 </app-shell>

@@ -1,5 +1,5 @@
 <app-shell current="contratos">
-  <a class="back" routerLink="/contracts">
+  <a class="back" routerLink="/contracts" [queryParams]="listQuery">
     <span class="back-mark" aria-hidden="true"><ng-icon name="lucideArrowLeft" /></span>
     Volver a contratos
   </a>
@@ -63,7 +63,11 @@
       @if (servicesFailed()) {
         <p class="lead" role="alert">No se pudieron cargar los servicios del plan.</p>
       } @else if (services().length === 0) {
-        <p class="lead">Este plan no tiene servicios registrados.</p>
+        <app-empty-state
+          [compact]="true"
+          icon="lucideWrench"
+          message="Este plan no tiene servicios registrados."
+        />
       } @else {
         <ul>
           @for (service of services(); track service.id) {

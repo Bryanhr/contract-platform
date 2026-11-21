@@ -50,7 +50,7 @@ describe('Home', () => {
 
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.sign-out')?.click();
     await fixture.whenStable();
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.dialog-confirm')?.click();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.confirm-primary')?.click();
     await fixture.whenStable();
 
     expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/auth/logout`, {

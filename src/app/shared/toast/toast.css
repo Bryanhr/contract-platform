@@ -1,0 +1,206 @@
+/* Top-right; override UA [popover] inset:0 + margin:auto centering. */
+:host {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 40;
+  inset: unset;
+  top: max(1rem, env(safe-area-inset-top)) !important;
+  right: max(1rem, env(safe-area-inset-right)) !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: min(24.5rem, calc(100vw - 2rem));
+  height: fit-content;
+  margin: 0 !important;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
+  pointer-events: none;
+}
+
+:host(:popover-open),
+:host(:not([popover])) {
+  display: block;
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.85rem 0.75rem 0.85rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--toast-accent) 35%, var(--control));
+  border-left: 4px solid var(--toast-accent);
+  background: #fffdf9;
+  color: var(--ink);
+  box-shadow:
+    0 0.15rem 0.35rem color-mix(in srgb, var(--ink) 6%, transparent),
+    0 0.85rem 1.8rem color-mix(in srgb, var(--ink) 14%, transparent);
+  pointer-events: auto;
+  transform-origin: top right;
+  animation:
+    toast-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both,
+    toast-settle 0.55s 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+:host([data-tone='danger']) {
+  --toast-accent: var(--danger);
+  --toast-mark: var(--danger);
+  --toast-wash: var(--danger-bg);
+}
+
+:host([data-tone='warning']) {
+  --toast-accent: #c45f12;
+  --toast-mark: #9a4a0c;
+  --toast-wash: #ffe8d4;
+}
+
+:host([data-tone='info']) {
+  --toast-accent: var(--focus);
+  --toast-mark: var(--rail);
+  --toast-wash: #e4f0ec;
+}
+
+:host([data-tone='success']) {
+  --toast-accent: #1f6b4a;
+  --toast-mark: #1f6b4a;
+  --toast-wash: #ddf3e8;
+}
+
+.toast-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 2.15rem;
+  block-size: 2.15rem;
+  border-radius: 0.25rem;
+  background: var(--toast-wash);
+  color: var(--toast-mark);
+  animation: toast-icon-pop 0.45s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --ng-icon__size: 1.2rem;
+}
+
+.toast-copy {
+  margin: 0;
+  font-family: Barlow, Candara, 'Segoe UI', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+  animation: toast-copy-in 0.4s 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toast-dismiss {
+  display: grid;
+  place-items: center;
+  inline-size: 2.1rem;
+  block-size: 2.1rem;
+  min-inline-size: 2.1rem;
+  min-block-size: 2.1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  --ng-icon__size: 1rem;
+}
+
+.toast-dismiss:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--toast-accent) 12%, transparent);
+}
+
+.toast-dismiss:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 1.1rem -0.85rem;
+    scale: 0.94;
+  }
+
+  70% {
+    opacity: 1;
+    scale: 1.015;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes toast-settle {
+  from {
+    box-shadow:
+      0 0.15rem 0.35rem color-mix(in srgb, var(--ink) 6%, transparent),
+      0 0.85rem 1.8rem color-mix(in srgb, var(--ink) 14%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--toast-accent) 0%, transparent);
+  }
+
+  40% {
+    box-shadow:
+      0 0.15rem 0.35rem color-mix(in srgb, var(--ink) 6%, transparent),
+      0 0.85rem 1.8rem color-mix(in srgb, var(--ink) 14%, transparent),
+      0 0 0 0.35rem color-mix(in srgb, var(--toast-accent) 18%, transparent);
+  }
+
+  to {
+    box-shadow:
+      0 0.15rem 0.35rem color-mix(in srgb, var(--ink) 6%, transparent),
+      0 0.85rem 1.8rem color-mix(in srgb, var(--ink) 14%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--toast-accent) 0%, transparent);
+  }
+}
+
+@keyframes toast-icon-pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+    rotate: -12deg;
+  }
+
+  to {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+}
+
+@keyframes toast-copy-in {
+  from {
+    opacity: 0;
+    translate: 0 -0.25rem;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast-icon,
+  .toast-copy {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .toast {
+    border: 1px solid ButtonText;
+    border-left-width: 4px;
+    forced-color-adjust: none;
+  }
+}
