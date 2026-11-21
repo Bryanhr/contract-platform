@@ -5,9 +5,13 @@ export type ContractValidityFilter = 'PENDING' | 'ACTIVE' | 'EXPIRING' | 'EXPIRE
 export interface ContractFilters {
   status: ContractStatusFilter;
   validity: ContractValidityFilter;
+  startDate: string;
+  endDate: string;
 }
 
 export const emptyContractFilters: ContractFilters = {
   status: '',
   validity: '',
+  startDate: '',
+  endDate: '',
 };

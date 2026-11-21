@@ -42,21 +42,43 @@ export class ContractList {
   protected readonly toast = signal<{ message: string; tone: ToastTone } | null>(null);
   protected readonly page = signal(this.initial.page);
   protected readonly filters = signal<ContractFilters>({ ...this.initial.filters });
-  protected readonly filtersOpen = signal(Boolean(this.initial.filters.status || this.initial.filters.validity));
+  protected readonly dateInputs = signal({
+    startDate: this.initial.filters.startDate,
+    endDate: this.initial.filters.endDate,
+  });
+  protected readonly dateRangeError = signal(false);
+  protected readonly filtersOpen = signal(
+    Boolean(
+      this.initial.filters.status ||
+        this.initial.filters.validity ||
+        this.initial.filters.startDate ||
+        this.initial.filters.endDate,
+    ),
+  );
   protected readonly date = formatCalendarDate;
   protected readonly unreachable = unreachable;
 
-  protected readonly pageCount = computed(() => {
-    const total = this.contracts()?.length ?? 0;
-    return Math.max(1, Math.ceil(total / this.pageSize));
+  protected readonly filteredContracts = computed(() => {
+    const { startDate, endDate } = this.filters();
+    return (this.contracts() ?? []).filter((contract) => {
+      const contractStart = normalizeCalendarDate(contract.startDate);
+      return (
+        (!startDate || (contractStart !== '' && contractStart >= startDate)) &&
+        (!endDate || (contractStart !== '' && contractStart <= endDate))
+      );
+    });
   });
+
+  protected readonly pageCount = computed(() =>
+    Math.max(1, Math.ceil(this.filteredContracts().length / this.pageSize)),
+  );
 
   protected readonly pages = computed(() =>
     Array.from({ length: this.pageCount() }, (_, index) => index + 1),
   );
 
   protected readonly visible = computed(() => {
-    const list = [...(this.contracts() ?? [])].sort(
+    const list = [...this.filteredContracts()].sort(
       (left, right) =>
         left.cliente.localeCompare(right.cliente, 'es', { sensitivity: 'base' }) ||
         left.plan.localeCompare(right.plan, 'es', { sensitivity: 'base' }),
@@ -67,7 +89,12 @@ export class ContractList {
 
   protected readonly filtering = computed(() => {
     const current = this.filters();
-    return Boolean(current.status || current.validity);
+    return Boolean(current.status || current.validity || current.startDate || current.endDate);
+  });
+
+  protected readonly dateFiltering = computed(() => {
+    const { startDate, endDate } = this.filters();
+    return Boolean(startDate || endDate);
   });
 
   protected listQuery(page = this.page()) {
@@ -77,6 +104,11 @@ export class ContractList {
   constructor() {
     const notice = this.navState?.['notice'];
     if (typeof notice === 'string') this.showToast(notice, 'success');
+    const { startDate, endDate } = this.dateInputs();
+    if (startDate && endDate && endDate < startDate) {
+      this.dateRangeError.set(true);
+      this.filters.update((current) => ({ ...current, startDate: '', endDate: '' }));
+    }
     void this.load();
   }
 
@@ -99,9 +131,30 @@ export class ContractList {
     void this.load({ resetPage: true });
   }
 
+  protected setDate(field: 'startDate' | 'endDate', event: Event) {
+    this.clearToast();
+    const value = (event.target as HTMLInputElement).value;
+    const dates = { ...this.dateInputs(), [field]: value };
+    this.dateInputs.set(dates);
+    if (dates.startDate && dates.endDate && dates.endDate < dates.startDate) {
+      this.dateRangeError.set(true);
+      return;
+    }
+    this.dateRangeError.set(false);
+    this.filters.update((current) => ({
+      ...current,
+      startDate: dates.startDate,
+      endDate: dates.endDate,
+    }));
+    this.page.set(1);
+    this.syncFiltersUrl(1);
+  }
+
   protected clearFilters() {
     this.clearToast();
     this.filters.set({ ...emptyContractFilters });
+    this.dateInputs.set({ startDate: '', endDate: '' });
+    this.dateRangeError.set(false);
     void this.load({ resetPage: true });
   }
 
@@ -219,11 +272,22 @@ export class ContractList {
     try {
       const list = await getContracts(this.filters());
       this.contracts.set(list);
-      const pageCount = Math.max(1, Math.ceil(list.length / this.pageSize));
-      const clamped = Math.min(this.page(), pageCount);
+      const clamped = Math.min(this.page(), this.pageCount());
       if (clamped !== this.page()) this.setPage(clamped);
     } catch {
       this.failed.set(true);
     }
   }
+}
+
+function normalizeCalendarDate(value: string) {
+  const date = /^(\d{4}-\d{2}-\d{2})/.exec(value)?.[1];
+  if (!date) return '';
+  const [year, month, day] = date.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+    ? date
+    : '';
 }

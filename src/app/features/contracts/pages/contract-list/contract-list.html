@@ -60,8 +60,35 @@
           <option value="EXPIRED">Vencido</option>
         </select>
       </div>
+      <div class="filter-field">
+        <label for="filtro-desde">Inicio desde</label>
+        <input
+          id="filtro-desde"
+          type="date"
+          [value]="dateInputs().startDate"
+          [attr.aria-invalid]="dateRangeError() ? 'true' : null"
+          [attr.aria-describedby]="dateRangeError() ? 'date-range-error' : null"
+          (change)="setDate('startDate', $event)"
+        />
+      </div>
+      <div class="filter-field">
+        <label for="filtro-hasta">Inicio hasta</label>
+        <input
+          id="filtro-hasta"
+          type="date"
+          [value]="dateInputs().endDate"
+          [attr.aria-invalid]="dateRangeError() ? 'true' : null"
+          [attr.aria-describedby]="dateRangeError() ? 'date-range-error' : null"
+          (change)="setDate('endDate', $event)"
+        />
+      </div>
       @if (filtering()) {
-        <button type="button" class="text-remove" (click)="clearFilters()">Quitar filtros</button>
+        <button type="button" class="clear-filters" (click)="clearFilters()">Limpiar</button>
+      }
+      @if (dateRangeError()) {
+        <p id="date-range-error" class="filter-error" role="alert">
+          Inicio hasta no puede ser anterior a Inicio desde.
+        </p>
       }
     </div>
   }
@@ -71,9 +98,17 @@
       <p class="lead">No se pudieron cargar los contratos.</p>
     }
   } @else if (contracts(); as contracts) {
-    @if (contracts.length === 0) {
+    @if (filteredContracts().length === 0) {
       @if (filtering()) {
-        <app-empty-state tone="search" icon="lucideFilterX" message="No se encontró nada con esos filtros." />
+        @if (dateFiltering()) {
+          <app-empty-state
+            tone="search"
+            icon="lucideFilterX"
+            message="No se encontraron contratos en el rango de fechas seleccionado."
+          />
+        } @else {
+          <app-empty-state tone="search" icon="lucideFilterX" message="No se encontró nada con esos filtros." />
+        }
       } @else {
         <app-empty-state icon="lucideFileSignature" message="Todavía no hay contratos." />
       }
