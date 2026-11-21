@@ -1,13 +1,9 @@
 import { Component, signal } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { Shell } from '../../../../shell/shell';
-import { getContracts } from '../../../contracts/services/contract-api';
-import { getCustomers } from '../../../customers/services/customer-api';
-import { getPlans } from '../../../plans/services/plan-api';
-import { getSupportServices } from '../../../services/services/service-api';
-import { getTemplates } from '../../../templates/services/template-api';
 import { homeIcons } from '../../icons';
 import { HomeGuide, HomeStat } from '../../models/module';
+import { loadHomeStats, readHomeStats } from '../../services/home-stats';
 
 @Component({
   selector: 'app-home',
@@ -17,14 +13,7 @@ import { HomeGuide, HomeStat } from '../../models/module';
   styleUrl: './home.css',
 })
 export class Home {
-  protected readonly loading = signal(true);
-  protected readonly stats = signal<HomeStat[]>([
-    { id: 'clients', icon: 'lucideBuilding2', label: 'Clientes', value: null },
-    { id: 'services', icon: 'lucideWrench', label: 'Servicios', value: null },
-    { id: 'plans', icon: 'lucideLayers', label: 'Planes', value: null },
-    { id: 'templates', icon: 'lucideScrollText', label: 'Plantillas', value: null },
-    { id: 'contracts', icon: 'lucideFileText', label: 'Contratos', value: null },
-  ]);
+  protected readonly stats = signal<HomeStat[]>(readHomeStats() ?? []);
 
   protected readonly guides: HomeGuide[] = [
     {
@@ -65,25 +54,8 @@ export class Home {
   ];
 
   constructor() {
-    void this.loadCounts();
-  }
-
-  private async loadCounts() {
-    const [customers, services, plans, templates, contracts] = await Promise.all([
-      getCustomers().then((list) => list.length).catch(() => null),
-      getSupportServices().then((list) => list.length).catch(() => null),
-      getPlans().then((list) => list.length).catch(() => null),
-      getTemplates().then((list) => list.length).catch(() => null),
-      getContracts().then((list) => list.length).catch(() => null),
-    ]);
-
-    this.stats.set([
-      { id: 'clients', icon: 'lucideBuilding2', label: 'Clientes', value: customers },
-      { id: 'services', icon: 'lucideWrench', label: 'Servicios', value: services },
-      { id: 'plans', icon: 'lucideLayers', label: 'Planes', value: plans },
-      { id: 'templates', icon: 'lucideScrollText', label: 'Plantillas', value: templates },
-      { id: 'contracts', icon: 'lucideFileText', label: 'Contratos', value: contracts },
-    ]);
-    this.loading.set(false);
+    void loadHomeStats()
+      .then((stats) => this.stats.set(stats))
+      .catch(() => undefined);
   }
 }

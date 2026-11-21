@@ -4,24 +4,20 @@
     <p class="lead">Clientes, planes y contratos de soporte.</p>
   </header>
 
-  <section class="counts" aria-labelledby="counts-title">
-    <h2 id="counts-title" class="section-title">Resumen</h2>
-    <ul class="count-grid" [attr.aria-busy]="loading() ? 'true' : null">
-      @for (stat of stats(); track stat.id) {
-        <li class="count">
-          <ng-icon [name]="stat.icon" class="count-icon" aria-hidden="true" />
-          <p class="count-value">
-            @if (stat.value === null) {
-              <span class="count-wait">—</span>
-            } @else {
-              {{ stat.value }}
-            }
-          </p>
-          <p class="count-label">{{ stat.label }}</p>
-        </li>
-      }
-    </ul>
-  </section>
+  @if (stats().length) {
+    <section class="counts" aria-labelledby="counts-title">
+      <h2 id="counts-title" class="section-title">Resumen</h2>
+      <ul class="count-grid">
+        @for (stat of stats(); track stat.id) {
+          <li class="count">
+            <ng-icon [name]="stat.icon" class="count-icon" aria-hidden="true" />
+            <p class="count-value">{{ stat.value }}</p>
+            <p class="count-label">{{ stat.label }}</p>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 
   <section class="guide" aria-labelledby="guide-title">
     <h2 id="guide-title" class="section-title">Para trabajar aquí</h2>
