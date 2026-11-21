@@ -51,5 +51,5 @@ export const routes: Routes = [
       { path: 'contracts/:id/edit', component: ContractDraft, title: 'Contratos · Editar' },
     ],
   },
-  { path: '**', component: Login, title: 'Login · SERVIT' },
+  { path: '**', redirectTo: 'login' },
 ];

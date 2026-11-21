@@ -2,6 +2,7 @@ import { AfterViewInit, Component, ElementRef, OnDestroy, inject, signal, viewCh
 import { ActivatedRoute, Router } from '@angular/router';
 import { focusField } from '../../../../core/focus-field';
 import { isUnreachable } from '../../../../core/outage';
+import { loadHomeStats } from '../../../home/services/home-stats';
 import { login, nextPath } from '../../services/login';
 
 @Component({
@@ -88,7 +89,13 @@ export class Login implements AfterViewInit, OnDestroy {
     try {
       await login(email, password);
       const target = nextPath(this.route.snapshot.queryParamMap.get('next'));
-      await this.router.navigateByUrl(target, { replaceUrl: true });
+      if (target === '/' || target === '') {
+        await Promise.race([
+          loadHomeStats().catch(() => undefined),
+          new Promise<void>((resolve) => window.setTimeout(resolve, 2000)),
+        ]);
+      }
+      await this.router.navigateByUrl(target, { replaceUrl: true, onSameUrlNavigation: 'reload' });
     } catch (error) {
       if (isUnreachable(error)) return;
       const status = typeof error === 'object' && error && 'status' in error ? error.status : 0;
