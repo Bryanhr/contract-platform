@@ -5,7 +5,7 @@
   </a>
 
   <div class="head">
-    <h1 id="contenido" tabindex="-1">Clientes</h1>
+    <h1 tabindex="-1">Clientes</h1>
     <a class="make" routerLink="/customers/new">Nuevo cliente</a>
   </div>
 
@@ -13,33 +13,36 @@
     @if (!unreachable()) {
       <p class="lead">No se pudieron cargar los clientes.</p>
     }
-  } @else if (customers(); as customers) {
-    @if (customers.length === 0) {
-      <p class="lead">Todavía no hay clientes.</p>
-    } @else {
-      <div class="search">
-        <label for="buscar">Buscar por razón social o RUC</label>
-        <div class="search-box">
-          <ng-icon name="lucideSearch" aria-hidden="true" />
-          <input
-            id="buscar"
-            #searchInput
-            type="search"
-            autocomplete="off"
-            spellcheck="false"
-            enterkeyhint="search"
-            [value]="query()"
-            (input)="search($event)"
-          />
-        </div>
+  } @else if (customers()?.length === 0) {
+    <app-empty-state icon="lucideBuilding2" message="Todavía no hay clientes." />
+  } @else {
+    <div class="search">
+      <label for="buscar">Buscar por razón social o RUC</label>
+      <div class="search-box">
+        <ng-icon name="lucideSearch" aria-hidden="true" />
+        <input
+          id="buscar"
+          #searchInput
+          type="search"
+          autocomplete="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          [value]="query()"
+          [disabled]="customers() === null"
+          (input)="search($event)"
+        />
+        @if (query()) {
+          <button type="button" class="search-clear" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+            <ng-icon name="lucideX" aria-hidden="true" />
+          </button>
+        }
       </div>
+    </div>
 
-      @if (notice()) {
-        <p class="notice" role="alert">{{ notice() }}</p>
-      }
 
+    @if (customers(); as customers) {
       @if (matches().length === 0) {
-        <p class="lead">Ningún cliente coincide con «{{ query() }}».</p>
+        <app-empty-state tone="search" icon="lucideUserSearch" [message]="noSearchResults(query())" />
       } @else {
         <ul class="register">
           @for (client of visible(); track client.id) {
@@ -56,7 +59,11 @@
                   }
                 </div>
                 <footer class="entry-actions">
-                  <a class="revise" [routerLink]="['/customers', client.id, 'edit']">
+                  <a
+                    class="revise"
+                    [routerLink]="['/customers', client.id, 'edit']"
+                    [queryParams]="listPageQuery(page())"
+                  >
                     Editar<span class="visually-hidden"> {{ client.empresa }}</span>
                   </a>
                   <button type="button" class="remove" (click)="askRemove(client)">
@@ -91,9 +98,26 @@
           </div>
         }
       }
+    } @else {
+      <ul class="register" aria-busy="true">
+        @for (row of skeleton; track row) {
+          <li>
+            <article class="entry" aria-hidden="true">
+              <div class="who">
+                <span class="skeleton name"></span>
+                <span class="skeleton line"></span>
+                <span class="skeleton line short"></span>
+              </div>
+              <footer class="entry-actions">
+                <span class="skeleton action"></span>
+                <span class="skeleton action"></span>
+              </footer>
+            </article>
+          </li>
+        }
+      </ul>
+      <p class="visually-hidden">Cargando clientes.</p>
     }
-  } @else {
-    <progress class="loading-spinner" aria-label="Cargando clientes"></progress>
   }
 
   <dialog #removeDialog class="confirm" closedby="any" aria-labelledby="remove-title">
@@ -106,4 +130,8 @@
       </button>
     </form>
   </dialog>
+
+  @if (toast(); as alert) {
+    <app-toast [message]="alert.message" [tone]="alert.tone" (dismissed)="clearToast()" />
+  }
 </app-shell>

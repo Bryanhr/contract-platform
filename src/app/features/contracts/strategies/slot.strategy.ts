@@ -6,6 +6,7 @@ export const slotStrategies = {
   ruc: (context) => context.client?.ruc ?? '',
   representante: (context) => context.client?.representante ?? '',
   domicilio: (context) => context.client?.domicilio ?? '',
+  direccion: (context) => context.client?.domicilio ?? '',
   correo: (context) => context.client?.correo ?? '',
   telefono: (context) => context.client?.telefono ?? '',
   plan: (context) => context.planName,

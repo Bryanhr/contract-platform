@@ -25,8 +25,25 @@ export function updatePlan(id: number, plan: PlanRequest) {
   return api.put<Plan>(`/plans/${id}`, plan).finally(forget);
 }
 
-export function deletePlan(id: number) {
+export async function deletePlan(id: number) {
+  const services = await getPlanServices(id).catch((error: unknown) => {
+    // Plan already gone or has no services endpoint payload — still try plan delete.
+    if (isNotFound(error)) return [] as PlanServiceLink[];
+    throw error;
+  });
+  for (const service of services) {
+    await removePlanService(id, service.supportServiceId);
+  }
   return api.delete(`/plans/${id}`).finally(forget);
+}
+
+function isNotFound(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      'status' in error &&
+      (error as { status: unknown }).status === 404,
+  );
 }
 
 export function getPlanServices(planId: number) {

@@ -23,7 +23,7 @@
           data-error="correo-error"
           placeholder="nombre@empresa.com"
         />
-        <p id="correo-error" class="error">Error: escribe el correo.</p>
+        <p id="correo-error" class="error"><span class="error-text">Escribe el correo.</span></p>
       </div>
 
       <div class="field">
@@ -45,10 +45,14 @@
             {{ passwordVisible ? 'Ocultar' : 'Mostrar' }}
           </button>
         </div>
-        <p id="contrasena-error" class="error">Error: escribe la contraseña.</p>
+        <p id="contrasena-error" class="error"><span class="error-text">Escribe la contraseña.</span></p>
       </div>
 
-      <p class="form-error" role="alert" [class.shown]="!!failure()">{{ failure() }}</p>
+      <p class="form-error" role="alert" [class.shown]="!!failure()">
+        @if (failure(); as msg) {
+          <span class="error-text">{{ msg }}</span>
+        }
+      </p>
       <button type="submit" [disabled]="pending()" [attr.aria-busy]="pending() ? 'true' : null">
         @if (pending()) {
           <progress class="loading-spinner" aria-label="Iniciando sesión"></progress>

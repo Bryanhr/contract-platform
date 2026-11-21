@@ -2,6 +2,7 @@ import { provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeft,
   lucideDownload,
+  lucideEye,
   lucideFileText,
   lucideListFilter,
   lucideUpload,
@@ -10,6 +11,7 @@ import {
 export const contractIcons = provideIcons({
   lucideArrowLeft,
   lucideDownload,
+  lucideEye,
   lucideFileText,
   lucideListFilter,
   lucideUpload,

@@ -1,0 +1,7 @@
+<div class="number-field">
+  <ng-content select="input" />
+  <div class="number-steps" aria-hidden="true">
+    <button type="button" class="step up" tabindex="-1" (click)="step(1)"></button>
+    <button type="button" class="step down" tabindex="-1" (click)="step(-1)"></button>
+  </div>
+</div>

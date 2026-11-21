@@ -114,11 +114,6 @@ input:user-invalid {
 .error,
 .form-error {
   margin: 0;
-  padding-left: 0.55rem;
-  border-left: 3px solid transparent;
-  color: var(--danger);
-  font-size: 0.95rem;
-  line-height: 1.4;
   visibility: hidden;
 }
 
@@ -126,11 +121,6 @@ input:user-invalid {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
-}
-
-.form-error {
-  display: block;
-  min-block-size: 1.4em;
 }
 
 @container (max-width: 18.75rem) {
@@ -142,7 +132,6 @@ input:user-invalid {
 input:user-invalid + .error,
 .password:has(input:user-invalid) + .error,
 .form-error.shown {
-  border-left-color: var(--danger);
   visibility: visible;
 }
 

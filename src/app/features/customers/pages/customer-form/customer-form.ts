@@ -1,7 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
+import { focusField } from '../../../../core/focus-field';
+import { listPageQuery, readListPage } from '../../../../core/list-page';
 import { isUnreachable, unreachable } from '../../../../core/outage';
+import { FieldTip } from '../../../../shared/field-tip/field-tip';
 import { Shell } from '../../../../shell/shell';
 import { customerIcons } from '../../icons';
 import { Client } from '../../models/client';
@@ -20,17 +23,19 @@ const blank: Client = {
 
 @Component({
   selector: 'app-customer-form',
-  imports: [Shell, RouterLink, NgIcon],
+  imports: [Shell, RouterLink, NgIcon, FieldTip],
   providers: [customerIcons],
   templateUrl: './customer-form.html',
   styleUrl: './customer-form.css',
 })
 export class CustomerForm {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private failureTimer: number | undefined;
 
-  protected readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
+  protected readonly id = this.route.snapshot.paramMap.get('id') ?? '';
   protected readonly editing = Boolean(this.id);
+  protected readonly listQuery = listPageQuery(readListPage(this.route.snapshot.queryParamMap.get('page')));
   protected readonly draft = signal<Client | null>(this.editing ? null : { ...blank });
   protected readonly failed = signal(false);
   protected readonly saving = signal(false);
@@ -44,7 +49,7 @@ export class CustomerForm {
   }
 
   protected set(event: Event) {
-    const field = event.target as HTMLInputElement;
+    const field = event.target as HTMLInputElement | HTMLTextAreaElement;
     const key = field.name as keyof Client;
     this.draft.update((current) => (current ? { ...current, [key]: field.value } : current));
     if (this.checked()) this.errors.set(customerErrors(this.draft()!));
@@ -62,9 +67,9 @@ export class CustomerForm {
     this.clearFailure();
     const errors = customerErrors(client);
     this.errors.set(errors);
-    const first = (['empresa', 'ruc', 'correo'] as const).find((field) => errors[field]);
+    const first = (['empresa', 'ruc', 'representante', 'correo'] as const).find((field) => errors[field]);
     if (first) {
-      document.getElementById(first)?.focus();
+      void focusField(first);
       return;
     }
     this.saving.set(true);
@@ -73,9 +78,16 @@ export class CustomerForm {
 
   private async send(client: Client) {
     try {
-      if (this.editing) await updateCustomer(this.id, client);
-      else await createCustomer(client);
-      await this.router.navigateByUrl('/customers');
+      if (this.editing) {
+        await updateCustomer(this.id, client);
+        await this.router.navigate(['/customers'], {
+          queryParams: this.listQuery,
+          state: { notice: 'Cliente actualizado.' },
+        });
+      } else {
+        await createCustomer(client);
+        await this.router.navigateByUrl('/customers', { state: { notice: 'Cliente creado.' } });
+      }
     } catch (error) {
       if (isUnreachable(error)) return;
       const status = typeof error === 'object' && error && 'status' in error ? error.status : 0;
@@ -83,7 +95,7 @@ export class CustomerForm {
         await this.router.navigateByUrl('/login');
       } else if (status === 409) {
         this.errors.set({ ruc: 'Ya existe un cliente con este RUC.' });
-        document.getElementById('ruc')?.focus();
+        void focusField('ruc');
       } else if (status === 404) {
         this.setFailure('Este cliente ya no existe.');
       } else if (status === 400) {

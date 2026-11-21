@@ -6,23 +6,36 @@ const valid: Client = {
   id: '',
   empresa: 'Acme SAC',
   ruc: '20123456789',
-  representante: '',
+  representante: 'Ana Ruiz',
   domicilio: '',
-  correo: '',
+  correo: 'ana@acme.pe',
   telefono: '',
 };
 
 describe('customerErrors', () => {
-  it('accepts a customer with only the required fields', () => {
+  it('accepts a customer with the required fields', () => {
     expect(customerErrors(valid)).toEqual({});
   });
 
-  it('flags a blank name, a short RUC and a bad email', () => {
-    expect(customerErrors({ ...valid, empresa: '  ', ruc: '2012345678', correo: 'acme' })).toEqual({
+  it('flags blank required fields and a bad email', () => {
+    expect(
+      customerErrors({
+        ...valid,
+        empresa: '  ',
+        ruc: '2012345678',
+        representante: ' ',
+        correo: 'acme',
+      }),
+    ).toEqual({
       empresa: 'Escribe la razón social.',
-      ruc: 'El RUC debe tener 11 dígitos.',
+      ruc: 'Escribe un RUC válido.',
+      representante: 'Escribe el representante.',
       correo: 'Escribe un correo válido.',
     });
+  });
+
+  it('flags a missing email', () => {
+    expect(customerErrors({ ...valid, correo: '' }).correo).toBe('Escribe el correo.');
   });
 
   it('rejects letters in the RUC', () => {
@@ -32,11 +45,11 @@ describe('customerErrors', () => {
 
 describe('toCustomerRequest', () => {
   it('trims values and sends blank optional fields as null', () => {
-    expect(toCustomerRequest({ ...valid, empresa: ' Acme SAC ', correo: ' ' })).toEqual({
+    expect(toCustomerRequest({ ...valid, empresa: ' Acme SAC ', telefono: ' ', domicilio: ' ' })).toEqual({
       businessName: 'Acme SAC',
       ruc: '20123456789',
-      representative: null,
-      email: null,
+      representative: 'Ana Ruiz',
+      email: 'ana@acme.pe',
       phone: null,
       address: null,
     });

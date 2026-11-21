@@ -1,28 +1,47 @@
 <app-shell current="inicio">
-  <h1 id="contenido" tabindex="-1" translate="no">SERVIT</h1>
-  <p class="lead">Tres libros de trabajo: los clientes, los planes y los contratos.</p>
+  <header class="intro">
+    <h1 tabindex="-1" translate="no">SERVIT</h1>
+    <p class="lead">Clientes, planes y contratos de soporte.</p>
+  </header>
 
-  <ul class="modules">
-    @for (module of modules; track module.id) {
-      <li>
-        @if (module.path) {
-          <a class="module" [routerLink]="module.path">
-            <ng-icon [name]="module.icon" class="module-icon" aria-hidden="true" />
-            <span class="module-copy">
-              <span class="module-name">{{ module.name }}</span>
-              <span class="module-summary">{{ module.summary }}</span>
-            </span>
-          </a>
-        } @else {
-          <a class="module" [id]="module.id" [href]="'#' + module.id">
-            <ng-icon [name]="module.icon" class="module-icon" aria-hidden="true" />
-            <span class="module-copy">
-              <span class="module-name">{{ module.name }}</span>
-              <span class="module-summary">{{ module.summary }}</span>
-            </span>
-          </a>
-        }
-      </li>
-    }
-  </ul>
+  <section class="counts" aria-labelledby="counts-title">
+    <h2 id="counts-title" class="section-title">Resumen</h2>
+    <ul class="count-grid" [attr.aria-busy]="loading() ? 'true' : null">
+      @for (stat of stats(); track stat.id) {
+        <li class="count">
+          <ng-icon [name]="stat.icon" class="count-icon" aria-hidden="true" />
+          <p class="count-value">
+            @if (stat.value === null) {
+              <span class="count-wait">—</span>
+            } @else {
+              {{ stat.value }}
+            }
+          </p>
+          <p class="count-label">{{ stat.label }}</p>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section class="guide" aria-labelledby="guide-title">
+    <h2 id="guide-title" class="section-title">Para trabajar aquí</h2>
+    <ul class="guide-list">
+      @for (item of guides; track item.id) {
+        <li class="guide-item">
+          <span class="guide-mark" aria-hidden="true">
+            <ng-icon [name]="item.icon" />
+          </span>
+          <div class="guide-copy">
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.summary }}</p>
+            <ul class="needs">
+              @for (need of item.needs; track need) {
+                <li>{{ need }}</li>
+              }
+            </ul>
+          </div>
+        </li>
+      }
+    </ul>
+  </section>
 </app-shell>

@@ -1,14 +1,18 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
+import { focusField } from '../../../../core/focus-field';
+import { listPageQuery, readListPage } from '../../../../core/list-page';
 import { isUnreachable, unreachable } from '../../../../core/outage';
+import { FieldTip } from '../../../../shared/field-tip/field-tip';
+import { NumberField } from '../../../../shared/number-field/number-field';
 import { Shell } from '../../../../shell/shell';
 import { getSupportServices } from '../../../services/services/service-api';
 import { SupportService } from '../../../services/models/service-catalog';
 import { planIcons } from '../../icons';
 import { toPlanRequest } from '../../mappers/plan.mapper';
 import { PlanDraft } from '../../models/plan-draft';
-import { PlanServiceLink } from '../../models/plan-service-link';
+import { PlanServiceAddRequest, PlanServiceLink } from '../../models/plan-service-link';
 import {
   addPlanService,
   createPlan,
@@ -24,6 +28,9 @@ import {
   PlanErrors,
   PlanField,
   planErrors,
+  PlanServiceFieldErrors,
+  planServiceFieldErrors,
+  planServiceValues,
   problemDetail,
 } from '../../validation/plan-errors';
 
@@ -34,74 +41,86 @@ const blank: PlanDraft = {
   durationMonths: '',
 };
 
-type FeedbackScope = 'plan' | 'services' | 'add' | `service:${number}`;
-type FeedbackKind = 'success' | 'error';
-
-interface Feedback {
-  message: string;
-  kind: FeedbackKind;
-}
+type FeedbackScope = 'failure' | 'service';
 
 @Component({
   selector: 'app-plan-form',
-  imports: [Shell, RouterLink, NgIcon],
+  imports: [Shell, RouterLink, NgIcon, FieldTip, NumberField],
   providers: [planIcons],
   templateUrl: './plan-form.html',
   styleUrl: './plan-form.css',
 })
 export class PlanForm {
   private readonly router = inject(Router);
-  private readonly routeId = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
+  private readonly route = inject(ActivatedRoute);
+  private readonly routeId = this.route.snapshot.paramMap.get('id') ?? '';
   private readonly feedbackTimers = new Map<string, number>();
 
   protected readonly id = Number(this.routeId);
   protected readonly editing = Boolean(this.routeId);
+  protected readonly listQuery = listPageQuery(readListPage(this.route.snapshot.queryParamMap.get('page')));
   protected readonly draft = signal<PlanDraft | null>(this.editing ? null : { ...blank });
   protected readonly failed = signal('');
   protected readonly saving = signal(false);
+  protected readonly checked = signal(false);
   protected readonly errors = signal<PlanErrors>({});
-  protected readonly feedbacks = signal<Record<string, Feedback>>({});
+  protected readonly failure = signal('');
   protected readonly unreachable = unreachable;
-  protected readonly planServices = signal<PlanServiceLink[] | null>(null);
+  protected readonly planServices = signal<PlanServiceLink[]>([]);
   protected readonly serviceOptions = signal<SupportService[]>([]);
-  protected readonly availableServiceOptions = computed(() => {
-    const associated = new Set((this.planServices() ?? []).map((service) => service.supportServiceId));
-    return this.serviceOptions().filter((service) => !associated.has(service.id));
+  protected readonly pendingServices = signal<Record<number, PendingService>>({});
+  protected readonly originalServices = signal<Record<number, PendingService>>({});
+  protected readonly pendingErrors = signal<Record<number, PlanServiceFieldErrors>>({});
+  protected readonly selectedServiceCount = computed(() => Object.keys(this.pendingServices()).length);
+  protected readonly serviceEntries = computed(() => {
+    const pending = this.pendingServices();
+    const options = new Map(this.serviceOptions().map((service) => [service.id, service]));
+    const links = new Map(this.planServices().map((service) => [service.supportServiceId, service]));
+    const linkedOrder = this.planServices()
+      .map((service) => service.supportServiceId)
+      .filter((serviceId) => pending[serviceId] !== undefined);
+    const linked = new Set(linkedOrder);
+    const added = Object.keys(pending)
+      .map(Number)
+      .filter((serviceId) => !linked.has(serviceId));
+
+    return [...linkedOrder, ...added].map((serviceId) => {
+      const option = options.get(serviceId);
+      const link = links.get(serviceId);
+      return {
+        service: {
+          id: serviceId,
+          name: option?.name ?? link?.name ?? 'Servicio',
+          serviceTypeName: option?.serviceTypeName ?? link?.serviceType ?? '',
+          unit: option?.unit ?? link?.unit ?? '',
+        },
+        values: pending[serviceId]!,
+      };
+    });
   });
+  protected readonly creatableServiceOptions = computed(() => {
+    const pending = this.pendingServices();
+    return this.serviceOptions().filter((service) => pending[service.id] === undefined);
+  });
+  protected readonly servicesPanelOpen = signal(false);
   protected readonly serviceLoading = signal(false);
-  protected readonly addingService = signal(false);
-  protected readonly savingService = signal<number | null>(null);
-  protected readonly removingService = signal<number | null>(null);
-  protected readonly selectedService = signal('');
-  protected readonly newMonthlyLimit = signal('');
-  protected readonly newExtraCost = signal('');
+  protected readonly serviceFailure = signal('');
 
   constructor() {
     if (this.editing) void this.load();
+    else void this.loadCatalog();
   }
 
   protected set(event: Event) {
     const field = event.target as HTMLInputElement;
     const key = field.name as PlanField;
-    this.clearAllFeedback();
+    this.clearFeedback('failure');
+    this.errors.update((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
     this.draft.update((current) => (current ? { ...current, [key]: field.value } : current));
-  }
-
-  protected feedback(scope: string) {
-    return this.feedbacks()[scope]?.message ?? '';
-  }
-
-  protected feedbackKind(scope: string) {
-    return this.feedbacks()[scope]?.kind ?? 'error';
-  }
-
-  protected selectedServiceOption() {
-    const id = Number(this.selectedService());
-    return this.serviceOptions().find((service) => service.id === id);
-  }
-
-  protected clearMessagesOnEdit() {
-    this.clearAllFeedback();
   }
 
   protected error(field: PlanField) {
@@ -112,175 +131,261 @@ export class PlanForm {
     event.preventDefault();
     const draft = this.draft();
     if (!draft || this.saving()) return;
-    this.clearAllFeedback();
+    this.checked.set(true);
+    this.clearFeedback('failure');
+    this.clearFeedback('service');
+
     const errors = planErrors(draft);
     this.errors.set(errors);
-    const first = (['name', 'responseTimeHours', 'monthlyCost', 'durationMonths'] as const).find(
+
+    this.syncPendingFromDom();
+    const pendingErrors = this.collectPendingErrors();
+    this.pendingErrors.set(pendingErrors);
+    const firstPending = this.firstPendingErrorTarget(pendingErrors);
+    if (firstPending) this.openServicesPanel();
+
+    const firstPlan = (['name', 'responseTimeHours', 'monthlyCost', 'durationMonths'] as const).find(
       (field) => errors[field],
     );
-    if (first) {
-      this.setFeedback('plan', 'Corrige los campos marcados e inténtalo otra vez.');
-      document.getElementById(first)?.focus();
+    if (firstPlan) {
+      void focusField(firstPlan);
       return;
     }
+    if (firstPending) {
+      void this.focusAfterPaint(firstPending);
+      return;
+    }
+
     this.saving.set(true);
     void this.send(draft);
   }
 
-  protected setServiceField(field: 'selectedService' | 'newMonthlyLimit' | 'newExtraCost', event: Event) {
-    const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
-    this.clearAllFeedback();
-    if (field === 'selectedService') this.selectedService.set(value);
-    else if (field === 'newMonthlyLimit') this.newMonthlyLimit.set(value);
-    else this.newExtraCost.set(value);
+  protected pendingError(serviceId: number, field: keyof PlanServiceFieldErrors) {
+    return this.pendingErrors()[serviceId]?.[field] ?? '';
   }
 
-  protected async associateService(event: Event) {
-    event.preventDefault();
-    if (this.addingService()) return;
-    this.clearAllFeedback();
-    if (!this.selectedService()) {
-      this.setFeedback('add', 'Selecciona un servicio.');
-      return;
-    }
-    const values = serviceValues(this.newMonthlyLimit(), this.newExtraCost());
-    if (values.error) {
-      this.setFeedback('add', values.error);
-      return;
-    }
+  protected onServicesToggle(event: Event) {
+    this.servicesPanelOpen.set((event.target as HTMLDetailsElement).open);
+  }
 
-    this.addingService.set(true);
-    try {
-      await addPlanService(this.id, {
-        supportServiceId: Number(this.selectedService()),
-        monthlyLimit: values.monthlyLimit,
-        extraCost: values.extraCost,
+  protected addPendingService(event: Event) {
+    const select = event.currentTarget;
+    if (!(select instanceof HTMLSelectElement)) return;
+    const serviceId = Number(select.value);
+    select.value = '';
+    if (!Number.isSafeInteger(serviceId) || serviceId <= 0) return;
+    if (this.pendingServices()[serviceId]) return;
+    this.pendingServices.update((current) => ({
+      ...current,
+      [serviceId]: { monthlyLimit: '', extraCost: '' },
+    }));
+    this.openServicesPanel();
+    this.clearFeedback('service');
+  }
+
+  protected removePendingService(serviceId: number) {
+    this.pendingServices.update((current) => {
+      const next = { ...current };
+      delete next[serviceId];
+      return next;
+    });
+    this.pendingErrors.update((current) => {
+      const next = { ...current };
+      delete next[serviceId];
+      return next;
+    });
+    this.clearFeedback('service');
+  }
+
+  protected setPendingServiceField(serviceId: number, field: 'monthlyLimit' | 'extraCost', event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.pendingServices.update((current) => {
+      const entry = current[serviceId];
+      if (!entry) return current;
+      return { ...current, [serviceId]: { ...entry, [field]: value } };
+    });
+    if (this.checked()) {
+      const entry = this.pendingServices()[serviceId];
+      if (!entry) return;
+      const nextErrors = planServiceFieldErrors(entry.monthlyLimit, entry.extraCost);
+      this.pendingErrors.update((current) => {
+        const next = { ...current };
+        const merged: PlanServiceFieldErrors = { ...(next[serviceId] ?? {}) };
+        // Only refresh the field being edited — don't invent errors on the sibling.
+        if (field === 'monthlyLimit') {
+          if (nextErrors.monthlyLimit) merged.monthlyLimit = nextErrors.monthlyLimit;
+          else delete merged.monthlyLimit;
+        } else if (nextErrors.extraCost) merged.extraCost = nextErrors.extraCost;
+        else delete merged.extraCost;
+        if (merged.monthlyLimit || merged.extraCost) next[serviceId] = merged;
+        else delete next[serviceId];
+        return next;
       });
-      this.selectedService.set('');
-      this.newMonthlyLimit.set('');
-      this.newExtraCost.set('');
-      await this.loadServices();
-      this.setFeedback('add', 'Servicio asociado al plan.', 'success');
-    } catch (error) {
-      if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
-      else if (!isUnreachable(error)) {
-        const status = apiErrorStatus(error);
-        this.setFeedback(
-          'add',
-          status === 409
-            ? 'Este servicio ya está asociado al plan.'
-            : status === 400
-              ? 'Revisa el límite y el costo adicional.'
-              : status === 404
-                ? 'No se encontró el plan o el servicio seleccionado.'
-                : 'No se pudo asociar el servicio.',
-        );
-      }
-    } finally {
-      this.addingService.set(false);
     }
-  }
-
-  protected async saveService(event: Event, service: PlanServiceLink, monthlyLimit: string, extraCost: string) {
-    event.preventDefault();
-    if (this.savingService() !== null) return;
-    this.clearAllFeedback();
-    const values = serviceValues(monthlyLimit, extraCost);
-    const scope = `service:${service.supportServiceId}` as const;
-    if (values.error) {
-      this.setFeedback(scope, values.error);
-      return;
-    }
-
-    this.savingService.set(service.supportServiceId);
-    try {
-      await updatePlanService(this.id, service.supportServiceId, {
-        monthlyLimit: values.monthlyLimit,
-        extraCost: values.extraCost,
-      });
-      await this.loadServices();
-      this.setFeedback(scope, 'Cambios del servicio guardados.', 'success');
-    } catch (error) {
-      if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
-      else if (!isUnreachable(error)) {
-        const status = apiErrorStatus(error);
-        this.setFeedback(
-          scope,
-          status === 400
-            ? 'Revisa el límite y el costo adicional.'
-            : status === 404
-              ? 'Este servicio ya no está asociado al plan.'
-              : 'No se pudieron guardar los cambios del servicio.',
-        );
-      }
-    } finally {
-      this.savingService.set(null);
-    }
-  }
-
-  protected async removeService(service: PlanServiceLink) {
-    if (this.removingService() !== null) return;
-    this.clearAllFeedback();
-    this.removingService.set(service.supportServiceId);
-    try {
-      await removePlanService(this.id, service.supportServiceId);
-      await this.loadServices();
-      this.setFeedback('services', 'Servicio quitado del plan.', 'success');
-    } catch (error) {
-      if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
-      else if (!isUnreachable(error)) {
-        this.setFeedback(
-          `service:${service.supportServiceId}`,
-          apiErrorStatus(error) === 404
-            ? 'Este servicio ya no está asociado al plan.'
-            : 'No se pudo quitar el servicio del plan.',
-        );
-      }
-    } finally {
-      this.removingService.set(null);
-    }
+    this.clearFeedback('service');
   }
 
   private async send(draft: PlanDraft) {
     try {
       const request = toPlanRequest(draft);
-      if (this.editing) await updatePlan(this.id, request);
-      else await createPlan(request);
-      await this.router.navigateByUrl('/plans', {
-        state: { notice: this.editing ? 'Plan actualizado correctamente.' : 'Plan creado correctamente.' },
-      });
+      const pending = this.preparedPendingServices();
+      if (!pending) {
+        this.syncPendingFromDom();
+        const pendingErrors = this.collectPendingErrors();
+        this.pendingErrors.set(pendingErrors);
+        this.openServicesPanel();
+        const firstPending = this.firstPendingErrorTarget(pendingErrors);
+        if (firstPending) void this.focusAfterPaint(firstPending);
+        return;
+      }
+
+      if (this.editing) {
+        await updatePlan(this.id, request);
+        await this.syncLinkedServices(pending);
+        await this.router.navigate(['/plans'], {
+          queryParams: this.listQuery,
+          state: { notice: 'Plan actualizado.' },
+        });
+        return;
+      }
+
+      const created = await createPlan(request);
+      try {
+        for (const service of pending) {
+          await addPlanService(created.id, service);
+        }
+        await this.router.navigateByUrl('/plans', { state: { notice: 'Plan creado.' } });
+      } catch (error) {
+        if (apiErrorStatus(error) === 401) {
+          await this.router.navigateByUrl('/login');
+          return;
+        }
+        if (!isUnreachable(error)) {
+          await this.router.navigateByUrl(`/plans/${created.id}/edit`);
+        }
+      }
     } catch (error) {
       if (isUnreachable(error)) return;
       const status = apiErrorStatus(error);
       if (status === 401) {
         await this.router.navigateByUrl('/login');
       } else if (status === 400) {
-        this.errors.set(apiFieldErrors(error));
-        this.setFeedback('plan', 'Revisa los datos e inténtalo otra vez.');
+        const fieldErrors = apiFieldErrors(error);
+        this.errors.set(fieldErrors);
+        this.setFeedback('failure', 'Revisa los datos.');
+        const first = (['name', 'responseTimeHours', 'monthlyCost', 'durationMonths'] as const).find(
+          (field) => fieldErrors[field],
+        );
+        void focusField(first ?? 'name');
       } else if (status === 409) {
-        this.errors.set({ name: 'Ya existe un plan con este nombre.' });
-        this.setFeedback('plan', 'Ya existe un plan con este nombre.');
-        document.getElementById('name')?.focus();
+        this.errors.set({ name: 'Ese nombre ya existe.' });
+        this.clearFeedback('failure');
+        void focusField('name');
       } else if (status === 404) {
-        this.setFeedback('plan', 'Este plan ya no existe.');
+        this.setFeedback('failure', 'Ese plan ya no existe.');
       } else {
-        this.setFeedback('plan', problemDetail(error) || 'No se pudo guardar el plan.');
+        this.setFeedback('failure', problemDetail(error) || 'No se pudo guardar.');
       }
-
     } finally {
       this.saving.set(false);
     }
   }
 
-  private setFeedback(scope: FeedbackScope, message: string, kind: FeedbackKind = 'error') {
+  private async syncLinkedServices(pending: PlanServiceAddRequest[]) {
+    const next = new Map(pending.map((service) => [service.supportServiceId, service]));
+    const original = this.originalServices();
+
+    for (const id of Object.keys(original).map(Number)) {
+      if (!next.has(id)) await removePlanService(this.id, id);
+    }
+
+    for (const [id, values] of next) {
+      const previous = original[id];
+      if (!previous) {
+        await addPlanService(this.id, values);
+        continue;
+      }
+      const previousLimit = Number(previous.monthlyLimit);
+      const previousExtra = Number(previous.extraCost);
+      if (previousLimit !== values.monthlyLimit || previousExtra !== values.extraCost) {
+        await updatePlanService(this.id, id, {
+          monthlyLimit: values.monthlyLimit,
+          extraCost: values.extraCost,
+        });
+      }
+    }
+  }
+
+  private openServicesPanel() {
+    this.servicesPanelOpen.set(true);
+    const panel = document.getElementById('plan-services-fold');
+    if (panel instanceof HTMLDetailsElement) panel.open = true;
+  }
+
+  private async focusAfterPaint(target: string) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await focusField(target);
+  }
+
+  private syncPendingFromDom() {
+    this.pendingServices.update((current) => {
+      const next: Record<number, PendingService> = { ...current };
+      for (const id of Object.keys(next)) {
+        const serviceId = Number(id);
+        const limit = document.getElementById(`limit-${serviceId}`);
+        const extra = document.getElementById(`extra-${serviceId}`);
+        const entry = next[serviceId];
+        if (!entry) continue;
+        next[serviceId] = {
+          monthlyLimit: limit instanceof HTMLInputElement ? limit.value : entry.monthlyLimit,
+          extraCost: extra instanceof HTMLInputElement ? extra.value : entry.extraCost,
+        };
+      }
+      return next;
+    });
+  }
+
+  private collectPendingErrors() {
+    const result: Record<number, PlanServiceFieldErrors> = {};
+    for (const [id, values] of Object.entries(this.pendingServices())) {
+      const serviceId = Number(id);
+      const fieldErrors = planServiceFieldErrors(values.monthlyLimit, values.extraCost);
+      if (fieldErrors.monthlyLimit || fieldErrors.extraCost) result[serviceId] = fieldErrors;
+    }
+    return result;
+  }
+
+  private firstPendingErrorTarget(errors: Record<number, PlanServiceFieldErrors>) {
+    for (const entry of this.serviceEntries()) {
+      const fieldErrors = errors[entry.service.id];
+      if (!fieldErrors) continue;
+      if (fieldErrors.monthlyLimit) return `limit-${entry.service.id}`;
+      if (fieldErrors.extraCost) return `extra-${entry.service.id}`;
+    }
+    return null;
+  }
+
+  private preparedPendingServices(): PlanServiceAddRequest[] | null {
+    const prepared: PlanServiceAddRequest[] = [];
+    for (const [id, values] of Object.entries(this.pendingServices())) {
+      const parsed = planServiceValues(values.monthlyLimit, values.extraCost);
+      if (parsed.error) return null;
+      prepared.push({
+        supportServiceId: Number(id),
+        monthlyLimit: parsed.monthlyLimit,
+        extraCost: parsed.extraCost,
+      });
+    }
+    return prepared;
+  }
+
+  private setFeedback(scope: FeedbackScope, message: string) {
     this.clearFeedback(scope);
-    this.feedbacks.update((current) => ({ ...current, [scope]: { message, kind } }));
+    if (scope === 'failure') this.failure.set(message);
     this.feedbackTimers.set(
       scope,
-      window.setTimeout(() => {
-        this.clearFeedback(scope);
-        if (scope === 'plan') this.errors.set({});
-      }, 5000),
+      window.setTimeout(() => this.clearFeedback(scope), 5000),
     );
   }
 
@@ -288,33 +393,23 @@ export class PlanForm {
     const timer = this.feedbackTimers.get(scope);
     if (timer !== undefined) window.clearTimeout(timer);
     this.feedbackTimers.delete(scope);
-    this.feedbacks.update((current) => {
-      const { [scope]: _removed, ...remaining } = current;
-      return remaining;
-    });
-  }
-
-  private clearAllFeedback() {
-    for (const timer of this.feedbackTimers.values()) window.clearTimeout(timer);
-    this.feedbackTimers.clear();
-    this.feedbacks.set({});
-    this.errors.set({});
+    if (scope === 'failure') this.failure.set('');
   }
 
   private async load() {
     if (!Number.isSafeInteger(this.id) || this.id <= 0) {
-      this.failed.set('El identificador del plan no es válido.');
+      this.failed.set('Identificador de plan inválido.');
       return;
     }
     try {
       const plan = await getPlan(this.id);
+      await this.loadServices();
       this.draft.set({
         name: plan.name,
         responseTimeHours: String(plan.responseTimeHours),
         monthlyCost: String(plan.monthlyCost),
         durationMonths: String(plan.durationMonths),
       });
-      void this.loadServices();
     } catch (error) {
       if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
       else if (!isUnreachable(error)) this.failed.set('No se pudo cargar el plan.');
@@ -327,36 +422,41 @@ export class PlanForm {
       const [services, options] = await Promise.all([getPlanServices(this.id), getSupportServices()]);
       this.planServices.set(services);
       this.serviceOptions.set(options);
+      const seeded = Object.fromEntries(
+        services.map((service) => [
+          service.supportServiceId,
+          {
+            monthlyLimit: String(service.monthlyLimit),
+            extraCost: String(service.extraCost),
+          },
+        ]),
+      );
+      this.pendingServices.set(seeded);
+      this.originalServices.set(structuredClone(seeded));
+      if (services.length > 0) this.openServicesPanel();
     } catch (error) {
       if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
-      else if (!isUnreachable(error)) {
-        this.setFeedback('services', 'No se pudieron cargar los servicios del plan.');
-      }
+      else if (!isUnreachable(error)) this.serviceFailure.set('No se pudieron cargar los servicios.');
+    } finally {
+      this.serviceLoading.set(false);
+    }
+  }
+
+  private async loadCatalog() {
+    this.serviceLoading.set(true);
+    this.serviceFailure.set('');
+    try {
+      this.serviceOptions.set(await getSupportServices());
+    } catch (error) {
+      if (apiErrorStatus(error) === 401) await this.router.navigateByUrl('/login');
+      else if (!isUnreachable(error)) this.serviceFailure.set('No se pudieron cargar los servicios.');
     } finally {
       this.serviceLoading.set(false);
     }
   }
 }
 
-function serviceValues(monthlyLimit: string, extraCost: string) {
-  const costMatch = /^(\d+)(?:\.(\d{1,2}))?$/.exec(extraCost.trim());
-  const integerDigits = costMatch?.[1].replace(/^0+/, '') ?? '';
-  const limit = Number(monthlyLimit);
-  const cost = Number(extraCost);
-
-  if (!/^\d+$/.test(monthlyLimit.trim()) || !Number.isSafeInteger(limit) || limit < 1) {
-    return {
-      error: 'El límite mensual debe ser un entero mayor o igual que 1.',
-      monthlyLimit: 0,
-      extraCost: 0,
-    };
-  }
-  if (!costMatch || integerDigits.length > 8 || !Number.isFinite(cost) || cost < 0) {
-    return {
-      error: 'El costo adicional debe ser mayor o igual que 0, con hasta 8 cifras enteras y máximo 2 decimales.',
-      monthlyLimit: limit,
-      extraCost: 0,
-    };
-  }
-  return { error: '', monthlyLimit: limit, extraCost: cost };
+interface PendingService {
+  monthlyLimit: string;
+  extraCost: string;
 }

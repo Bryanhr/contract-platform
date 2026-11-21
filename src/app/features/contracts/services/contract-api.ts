@@ -8,9 +8,10 @@ import { ContractRequest } from '../models/contract-request';
 import { ContractResponse } from '../models/contract-response';
 import { Plan } from '../models/plan';
 import { PlanDetail } from '../models/plan-detail';
-import { Template } from '../models/template';
+import { getTemplates } from '../../templates/services/template-api';
 
-let templatesRequest: Promise<Template[]> | undefined;
+export { getTemplates };
+
 let plansRequest: Promise<Plan[]> | undefined;
 const planDetailCache = new Map<number, Promise<PlanDetail>>();
 const contractsCache = new Map<string, Promise<ContractSummary[]>>();
@@ -28,14 +29,6 @@ interface PlanServicePayload {
 
 interface PlanDetailPayload extends Omit<PlanDetail, 'services'> {
   services?: PlanServicePayload[] | null;
-}
-
-export function getTemplates() {
-  templatesRequest ??= api.get<Template[]>('/templates').catch((error: unknown) => {
-    templatesRequest = undefined;
-    throw error;
-  });
-  return templatesRequest;
 }
 
 export function getPlans() {

@@ -11,13 +11,16 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
 import { map } from 'rxjs';
+import { focusField } from '../../../../core/focus-field';
 import { isUnreachable, unreachable } from '../../../../core/outage';
+import { EmptyState } from '../../../../shared/empty-state/empty-state';
 import { Shell } from '../../../../shell/shell';
 import { readTemplate } from '../../document/read-template';
 import { addMonths, formatCalendarDate, todayIso } from '../../format/calendar';
 import { serviceLine } from '../../format/service-line';
 import { soles } from '../../format/soles';
 import { contractIcons } from '../../icons';
+import { contractListQuery, readContractListState } from '../../list-query';
 import { Client } from '../../../customers/models/client';
 import { Draft } from '../../models/draft';
 import { Piece } from '../../models/document';
@@ -35,7 +38,7 @@ import { resolveSlot } from '../../strategies/slot.strategy';
 
 @Component({
   selector: 'app-contract-draft',
-  imports: [Shell, RouterLink, NgIcon],
+  imports: [Shell, RouterLink, NgIcon, EmptyState],
   providers: [contractIcons],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './contract-draft.html',
@@ -44,6 +47,8 @@ import { resolveSlot } from '../../strategies/slot.strategy';
 export class ContractDraft {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly listState = readContractListState(this.route.snapshot.queryParamMap);
+  protected readonly listQuery = contractListQuery(this.listState.page, this.listState.filters);
 
   protected readonly clients = signal<Client[] | null>(null);
   protected readonly clientsFailed = signal(false);
@@ -164,7 +169,7 @@ export class ContractDraft {
       this.failure.set(missing === 'cliente' ? 'Elige un cliente.' : 'Elige el inicio del servicio.');
       const fold = document.getElementById(missing === 'cliente' ? 'cliente-fold' : 'inicio-fold');
       if (fold instanceof HTMLDetailsElement) fold.open = true;
-      document.getElementById(missing)?.focus();
+      void focusField(missing);
       return;
     }
     const planId = this.template()?.planId;
@@ -346,9 +351,16 @@ export class ContractDraft {
   private async save(customerId: number, planId: number, startDate: string) {
     const id = this.contractId();
     try {
-      if (id) await updateContract(id, { customerId, planId, startDate });
-      else await createContract({ customerId, planId, startDate });
-      await this.router.navigate(['/contracts'], { state: { generated: !id } });
+      if (id) {
+        await updateContract(id, { customerId, planId, startDate });
+        await this.router.navigate(['/contracts'], {
+          queryParams: this.listQuery,
+          state: { notice: 'Contrato actualizado.' },
+        });
+      } else {
+        await createContract({ customerId, planId, startDate });
+        await this.router.navigateByUrl('/contracts', { state: { notice: 'Contrato generado.' } });
+      }
     } catch (error) {
       if (isUnreachable(error)) return;
       const status = typeof error === 'object' && error && 'status' in error ? error.status : 0;

@@ -14,6 +14,8 @@
   --warning: #8a6200;
   --warning-bg: #efd582;
   --focus: #0c3f34;
+  /* Same rhythm inside a field group and between groups (plan/customer forms). */
+  --form-gap: 1.25rem;
   color-scheme: light;
   accent-color: var(--accent);
   scrollbar-color: var(--control) var(--floor);
@@ -25,19 +27,50 @@
   box-sizing: border-box;
 }
 
-html,
+html {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 app-root {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Routed pages with shell fill the viewport; only .content scrolls */
+app-root > router-outlet {
+  display: contents;
+}
+
+app-root > app-outage {
+  flex: none;
+}
+
+app-root > :not(router-outlet, app-outage) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html:has(.login),
+body:has(.login) {
+  height: auto;
   min-height: 100dvh;
+  overflow: auto;
 }
 
 app-root:has(.login) {
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
   align-items: center;
   justify-content: center;
   padding:
@@ -50,7 +83,31 @@ app-root:has(.login) {
   color-scheme: dark;
 }
 
-app-root:has(.login) > router-outlet,
+app-root:has(.login) > :not(router-outlet, app-outage) {
+  flex: 0 1 auto;
+  overflow: visible;
+}
+
+@media (max-width: 720px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow: auto;
+  }
+
+  app-root:not(:has(.login)) {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  app-root:not(:has(.login)) > :not(router-outlet, app-outage) {
+    flex: 0 1 auto;
+    overflow: visible;
+  }
+}
+
 app-root:has(.login) > app-login,
 app-root:has(.login) .page.page {
   display: contents;
@@ -101,9 +158,90 @@ a {
   color: var(--on-accent);
 }
 
-:where(a, button, input, textarea, select):focus-visible {
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
+}
+
+/* Main is a skip landmark; never draw a full-pane focus ring (causes overflow). */
+main#contenido:focus {
+  outline: none;
+}
+
+:where(input, select, textarea)[aria-invalid='true'],
+:where(input, select, textarea):user-invalid {
+  border-color: var(--danger);
+  border-bottom-color: var(--danger);
+}
+
+/*
+  Outer slot keeps a fixed height (no CLS). The accent bar lives on
+  `.error-text` so it only spans the message, not the empty reserved space.
+*/
+.field-error,
+.error,
+.form-error {
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  block-size: 2.8em;
+  min-block-size: 2.8em;
+  max-block-size: 2.8em;
+  overflow: hidden;
+  color: var(--danger);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.field-error > .error-text,
+.error > .error-text,
+.form-error > .error-text {
+  display: inline-block;
+  max-inline-size: 100%;
+  max-block-size: 2.8em;
+  padding: 0.05rem 0 0.05rem 0.55rem;
+  border-inline-start: 3px solid var(--danger);
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+/* Text action to undo/remove a selection (filters, pending items, etc.). */
+.text-remove {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.2rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.text-remove:hover {
+  color: color-mix(in srgb, var(--danger) 75%, var(--ink));
+}
+
+.text-remove:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* Keep label + control in view when focusing the first invalid field. */
+.field,
+.filter-field,
+.pending-item {
+  scroll-margin-block-start: 1.75rem;
 }
 
 .visually-hidden:where(:not(:focus-within, :active)) {
@@ -191,14 +329,43 @@ progress.loading-spinner:indeterminate {
   }
 }
 
-dialog.sign-out-dialog:modal {
+.loading {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  min-block-size: 12rem;
+}
+
+.loading.loading-section {
+  flex: 0 0 auto;
+  min-block-size: 10rem;
+}
+
+.loading:has(> progress:only-child) {
+  justify-content: center;
+  align-items: center;
+}
+
+.loading > :not(progress) {
+  flex: none;
+}
+
+.loading progress.loading-spinner:indeterminate {
+  --size: 7.5rem;
+  --thickness: 9px;
+  margin-block: auto;
+  margin-inline: auto;
+}
+
+dialog.confirm:modal {
   overscroll-behavior: contain;
 }
 
-dialog.sign-out-dialog::backdrop {
+dialog.confirm::backdrop {
   overflow: hidden;
   overscroll-behavior: contain;
-  background: rgb(20 33 28 / 46%);
 }
 
 .choice:focus,
@@ -380,5 +547,151 @@ dialog.sign-out-dialog::backdrop {
 @media (forced-colors: active) {
   .back-mark {
     border-color: LinkText;
+  }
+}
+
+/* Shared confirm dialogs (delete, sign-out, etc.) */
+.confirm {
+  width: min(24rem, calc(100% - 2rem));
+  padding: 1.25rem 1.35rem 1.15rem;
+  border: 0;
+  border-left: 6px solid var(--danger);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.confirm.confirm-accent {
+  border-left-color: var(--accent);
+}
+
+.confirm::backdrop {
+  background: rgb(20 33 28 / 46%);
+}
+
+.confirm h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.confirm p {
+  margin: 0 0 1.1rem;
+  line-height: 1.5;
+}
+
+.confirm form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.confirm button {
+  min-height: 2.75rem;
+  min-inline-size: 7.5rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.confirm button:hover:not(:disabled) {
+  background: rgb(20 33 28 / 6%);
+}
+
+.confirm button:active:not(:disabled) {
+  background: rgb(20 33 28 / 12%);
+}
+
+.confirm .confirm-danger {
+  border-color: transparent;
+  background: var(--danger);
+  color: #fff;
+}
+
+.confirm .confirm-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 84%, #fff);
+  color: #fff;
+}
+
+.confirm .confirm-danger:active:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 78%, #000);
+  color: #fff;
+}
+
+.confirm .confirm-primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.confirm .confirm-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 86%, var(--on-accent));
+}
+
+.confirm .confirm-primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 74%, var(--on-accent));
+}
+
+.confirm button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Search field: hide native clear, use project icon button */
+.search-box input[type='search']::-webkit-search-cancel-button,
+.search-box input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-clear {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.search-clear:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.search-clear:active:not(:disabled) {
+  color: var(--rail);
+}
+
+.search-clear ng-icon {
+  --ng-icon__size: 1.15rem;
+  display: block;
+}
+
+@media (forced-colors: active) {
+  .confirm,
+  .confirm .confirm-danger,
+  .confirm .confirm-primary {
+    border: 1px solid ButtonText;
+    background: Canvas;
+    color: ButtonText;
+  }
+
+  .search-clear {
+    color: ButtonText;
   }
 }

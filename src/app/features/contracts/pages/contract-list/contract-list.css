@@ -22,10 +22,6 @@ h1 {
   text-wrap: balance;
 }
 
-h1:focus-visible {
-  outline-offset: 4px;
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -34,8 +30,7 @@ h1:focus-visible {
 }
 
 .make,
-.filter,
-.clear {
+.filter {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -114,29 +109,18 @@ h1:focus-visible {
   min-width: min(14rem, 100%);
 }
 
-.clear {
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-  cursor: pointer;
+.filters .text-remove {
+  align-self: end;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
 }
 
-.clear:hover {
-  color: var(--accent);
-}
-
-.lead,
-.notice {
+.lead {
   max-width: 36rem;
   margin: 0.9rem 0 0;
   color: var(--muted);
   line-height: 1.5;
-}
-
-.notice {
-  color: var(--danger);
 }
 
 .register {
@@ -262,6 +246,7 @@ h1:focus-visible {
   margin-inline-start: auto;
 }
 
+.detail,
 .revise,
 .open,
 .upload {
@@ -279,6 +264,29 @@ h1:focus-visible {
   cursor: pointer;
 }
 
+.detail {
+  border: 1px solid color-mix(in srgb, var(--rail) 28%, transparent);
+  background: color-mix(in srgb, var(--rail) 12%, var(--panel));
+  color: var(--rail);
+  font-weight: 700;
+}
+
+.detail:hover {
+  border-color: color-mix(in srgb, var(--rail) 55%, var(--accent));
+  background: color-mix(in srgb, var(--rail) 18%, var(--panel));
+  color: var(--ink);
+}
+
+.detail:active {
+  background: color-mix(in srgb, var(--rail) 26%, var(--panel));
+}
+
+.detail:focus-visible,
+.revise:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
 .revise {
   border: 1px solid transparent;
   background: var(--rail);
@@ -291,11 +299,6 @@ h1:focus-visible {
 
 .revise:active {
   background: color-mix(in srgb, var(--rail) 70%, var(--ink));
-}
-
-.revise:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
 }
 
 .open {
@@ -388,6 +391,7 @@ a.open:hover,
 }
 
 @media (pointer: coarse) {
+  .detail,
   .revise,
   .open,
   .upload {
@@ -547,6 +551,8 @@ a.open:hover,
   .filter.open,
   .filter:hover,
   .state[data-kind],
+  .detail,
+  .detail:hover,
   .revise,
   .revise:hover,
   .open,

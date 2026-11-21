@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { focusField } from '../../../../core/focus-field';
 import { isUnreachable } from '../../../../core/outage';
 import { login, nextPath } from '../../services/login';
 
@@ -73,7 +74,7 @@ export class Login implements AfterViewInit, OnDestroy {
       const first = fields.find((field) => field.matches(':user-invalid'));
       if (first) {
         this.announced.add(first);
-        first.focus();
+        void focusField(first);
         return;
       }
       const data = new FormData(form);
@@ -133,10 +134,10 @@ export class Login implements AfterViewInit, OnDestroy {
 
   private errorText(field: HTMLInputElement): string {
     if (field.validity.valueMissing) {
-      return field.id === 'correo' ? 'Error: escribe el correo.' : 'Error: escribe la contraseña.';
+      return field.id === 'correo' ? 'Escribe el correo.' : 'Escribe la contraseña.';
     }
     if (field.id === 'correo' && field.validity.typeMismatch) {
-      return 'Error: el formato es nombre@empresa.com.';
+      return 'Escribe un correo válido.';
     }
     return '';
   }

@@ -1,0 +1,19 @@
+<div
+  class="toast"
+  [attr.role]="tone() === 'success' || tone() === 'info' ? 'status' : 'alert'"
+  [attr.aria-live]="tone() === 'success' || tone() === 'info' ? 'polite' : 'assertive'"
+  aria-atomic="true"
+>
+  <span class="toast-icon" aria-hidden="true">
+    <ng-icon [name]="resolvedIcon()" />
+  </span>
+  <p class="toast-copy">{{ message() }}</p>
+  <button
+    type="button"
+    class="toast-dismiss"
+    [attr.aria-label]="dismissLabel()"
+    (click)="dismiss()"
+  >
+    <ng-icon name="lucideX" aria-hidden="true" />
+  </button>
+</div>

@@ -92,17 +92,11 @@ h1 {
   outline: none;
 }
 
-.lead,
-.notice {
+.lead {
   max-width: 36rem;
   margin: 0.9rem 0 0;
   color: var(--muted);
   line-height: 1.5;
-}
-
-.notice {
-  color: var(--danger);
-  font-weight: 600;
 }
 
 .register {
@@ -221,70 +215,48 @@ h1 {
   cursor: not-allowed;
 }
 
-progress.loading-spinner:indeterminate {
-  --size: 3rem;
-  margin: 3rem auto;
+.skeleton {
+  display: block;
+  background: color-mix(in srgb, var(--control) 32%, var(--floor));
 }
 
-.confirm {
-  width: min(24rem, calc(100% - 2rem));
-  padding: 1.25rem 1.35rem 1.15rem;
-  border: 0;
-  border-left: 6px solid var(--danger);
-  background: var(--panel);
-  color: var(--ink);
+.skeleton.name {
+  width: min(16rem, 72%);
+  height: 1.35rem;
 }
 
-.confirm::backdrop {
-  background: rgb(20 33 28 / 46%);
+.skeleton.line {
+  width: min(12rem, 58%);
+  height: 0.75rem;
+  margin-top: 0.45rem;
 }
 
-.confirm h2 {
-  margin: 0 0 0.4rem;
-  font-size: 1.35rem;
+.skeleton.short {
+  width: min(8rem, 42%);
 }
 
-.confirm p {
-  margin: 0 0 1.1rem;
-  line-height: 1.5;
+.skeleton.action {
+  width: 5.5rem;
+  height: 2.5rem;
 }
 
-.confirm form {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem;
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
 }
 
-.confirm button {
-  min-height: 2.75rem;
-  min-inline-size: 7.5rem;
-  padding: 0.3rem 0.85rem;
-  border: 1px solid var(--control);
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.confirm .confirm-danger {
-  border-color: transparent;
-  background: var(--danger);
-  color: #fff;
-}
-
-.confirm button:disabled {
-  cursor: default;
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 
 @media (forced-colors: active) {
   .make,
   .revise,
   .remove,
-  .pages button,
-  .confirm,
-  .confirm .confirm-danger {
+  .pages button {
     border: 1px solid ButtonText;
     background: Canvas;
     color: ButtonText;
@@ -292,5 +264,10 @@ progress.loading-spinner:indeterminate {
 
   .pages button[aria-current='page'] {
     border-width: 3px;
+  }
+
+  .skeleton {
+    background: GrayText;
+    forced-color-adjust: none;
   }
 }
