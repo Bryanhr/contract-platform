@@ -205,7 +205,15 @@ export class ContractList {
       await uploadSigned(id, file);
       this.contracts.set(await getContracts(this.filters()));
     } catch (error) {
-      if (!isUnreachable(error)) this.showToast('No se pudo subir el documento firmado.', 'danger');
+      if (isUnreachable(error)) return;
+      if (this.startDatePassed(id) && conflictStatus(error)) {
+        this.showToast(
+          'La fecha de inicio de este contrato ya pasó; no se puede subir el documento firmado.',
+          'warning',
+        );
+      } else {
+        this.showToast('No se pudo subir el documento firmado.', 'danger');
+      }
     } finally {
       this.uploading.set('');
     }
@@ -258,6 +266,12 @@ export class ContractList {
     this.toast.set(null);
   }
 
+  private startDatePassed(id: string) {
+    const contract = this.contracts()?.find((item) => item.id === id);
+    const start = contract ? normalizeCalendarDate(contract.startDate) : '';
+    return Boolean(start) && start < todayIsoDate();
+  }
+
   private showToast(message: string, tone: ToastTone) {
     this.toast.set(null);
     queueMicrotask(() => this.toast.set({ message, tone }));
@@ -278,6 +292,18 @@ export class ContractList {
       this.failed.set(true);
     }
   }
+}
+
+function conflictStatus(error: unknown) {
+  const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : 0;
+  return status === 409;
+}
+
+function todayIsoDate() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 function normalizeCalendarDate(value: string) {
