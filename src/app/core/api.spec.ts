@@ -1,69 +1,88 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
 import { ApiError } from './models/api-error';
-import { BASE_URL, api } from './api';
+import { BASE_URL, api, initApi } from './api';
 import { clearUnreachable, unreachable } from './outage';
 
 describe('api', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    TestBed.runInInjectionContext(() => initApi());
+  });
+
   afterEach(() => {
+    http.verify();
     clearUnreachable();
-    vi.unstubAllGlobals();
   });
 
   it('returns the response body', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: 1 }));
-    vi.stubGlobal('fetch', fetchMock);
+    const promise = api.get<{ id: number }>('/contracts');
 
-    await expect(api.get<{ id: number }>('/contracts')).resolves.toEqual({ id: 1 });
+    const req = http.expectOne(`${BASE_URL}/contracts`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 1 });
 
-    expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/contracts`, {
-      method: 'GET',
-      body: undefined,
-    });
+    await expect(promise).resolves.toEqual({ id: 1 });
   });
 
   it('sends the body on post', async () => {
     const body = { name: 'Acuerdo' };
-    const fetchMock = vi.fn().mockResolvedValue(Response.json(body));
-    vi.stubGlobal('fetch', fetchMock);
+    const promise = api.post<typeof body>('/contracts', body);
 
-    await expect(api.post<typeof body>('/contracts', body)).resolves.toEqual(body);
+    const req = http.expectOne(`${BASE_URL}/contracts`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    expect(req.request.headers.get('Content-Type')).toBe('application/json');
+    req.flush(body);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/contracts`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
+    await expect(promise).resolves.toEqual(body);
   });
 
   it('returns nothing when delete responds 204', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+    const promise = api.delete('/contracts/1');
 
-    await expect(api.delete('/contracts/1')).resolves.toBeUndefined();
+    const req = http.expectOne(`${BASE_URL}/contracts/1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    await expect(promise).resolves.toBeUndefined();
   });
 
   it('rejects an http error with its status and body', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(Response.json({ message: 'No encontrado' }, { status: 404 })),
-    );
+    const promise = api.get('/contracts');
 
-    await expect(api.get('/contracts')).rejects.toEqual({
+    const req = http.expectOne(`${BASE_URL}/contracts`);
+    req.flush({ message: 'No encontrado' }, { status: 404, statusText: 'Not Found' });
+
+    await expect(promise).rejects.toEqual({
       status: 404,
       body: { message: 'No encontrado' },
     } satisfies ApiError);
   });
 
   it('rejects when the request fails', async () => {
-    const failure = new TypeError('Failed to fetch');
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(failure));
+    const promise = api.get('/contracts');
 
-    await expect(api.get('/contracts')).rejects.toBe(failure);
+    const req = http.expectOne(`${BASE_URL}/contracts`);
+    req.error(new ProgressEvent('error'));
+
+    await expect(promise).rejects.toEqual({ status: 0, body: null } satisfies ApiError);
     expect(unreachable()).toBe(true);
   });
 
   it('keeps an http error off the outage notice', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+    const promise = api.get('/contracts');
 
-    await expect(api.get('/contracts')).rejects.toMatchObject({ status: 500 });
+    const req = http.expectOne(`${BASE_URL}/contracts`);
+    req.flush(null, { status: 500, statusText: 'Server Error' });
+
+    await expect(promise).rejects.toMatchObject({ status: 500 });
     expect(unreachable()).toBe(false);
   });
 });
