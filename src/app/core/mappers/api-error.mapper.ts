@@ -1,22 +1,27 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ApiError } from '../models/api-error';
 
-export async function toApiError(response: Response): Promise<ApiError> {
+export function toApiError(error: HttpErrorResponse): ApiError {
   return {
-    status: response.status,
-    body: await parseResponseBody(response),
+    status: error.status,
+    body: error.status === 0 ? null : parseErrorBody(error),
   };
 }
 
-async function parseResponseBody(response: Response): Promise<unknown> {
-  const text = await response.text();
+function parseErrorBody(error: HttpErrorResponse): unknown {
+  const body: unknown = error.error;
 
-  if (!text) {
+  if (body === null || body === undefined || body === '') {
     return null;
   }
 
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
+  if (typeof body === 'string') {
+    try {
+      return JSON.parse(body) as unknown;
+    } catch {
+      return body;
+    }
   }
+
+  return body;
 }

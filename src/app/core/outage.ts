@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 
 export const unreachable = signal(false);
@@ -11,5 +12,5 @@ export function clearUnreachable(): void {
 }
 
 export function isUnreachable(error: unknown): boolean {
-  return error instanceof TypeError;
+  return error instanceof TypeError || (error instanceof HttpErrorResponse && error.status === 0);
 }
